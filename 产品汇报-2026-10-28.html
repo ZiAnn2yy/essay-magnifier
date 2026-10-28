@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>教育陪伴智能体 · 产品汇报 2026-10-28</title>
+<style>
+  :root{
+    --ink:#23201c; --ink-2:#5c554a; --line:#e2dbcd;
+    --bg:#faf7f0; --card:#fff; --acc:#c13b2a; --ok:#2f7d4f; --warn:#a8710f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC",sans-serif;
+    line-height:1.75;font-size:15px;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:48px 32px 80px}
+
+  header{border-bottom:3px solid var(--ink);padding-bottom:20px;margin-bottom:36px}
+  header .kicker{font-size:13px;letter-spacing:.16em;color:var(--ink-2)}
+  header h1{font-size:30px;line-height:1.25;margin:6px 0 10px}
+  header .meta{font-size:13.5px;color:var(--ink-2)}
+
+  h2{
+    font-size:20px;margin:44px 0 16px;padding-bottom:8px;
+    border-bottom:1px solid var(--line);
+  }
+  h3{font-size:16px;margin:26px 0 10px}
+  p{margin-bottom:12px;color:#332e27}
+  ul,ol{margin:0 0 14px 22px}
+  li{margin-bottom:7px;color:#332e27}
+  b{color:var(--ink)}
+  code{
+    background:#f0ebe0;padding:1px 6px;border-radius:4px;
+    font-family:ui-monospace,Consolas,monospace;font-size:13px;
+  }
+
+  .lead{
+    background:var(--card);border-left:4px solid var(--acc);
+    padding:18px 22px;border-radius:0 10px 10px 0;margin-bottom:8px;
+  }
+  .lead p:last-child{margin-bottom:0}
+
+  .hl{
+    background:#fff8e6;border:1px solid #f0dfae;border-radius:10px;
+    padding:16px 20px;margin:18px 0;
+  }
+  .hl h4{font-size:14px;letter-spacing:.06em;color:var(--warn);margin-bottom:8px}
+  .hl ul{margin-bottom:0}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:18px 0}
+  .shot{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .shot img{width:100%;display:block;border-bottom:1px solid var(--line)}
+  .shot .cap{padding:13px 16px}
+  .shot .cap b{display:block;font-size:15px;margin-bottom:4px}
+  .shot .cap span{font-size:13.5px;color:var(--ink-2);line-height:1.6}
+
+  .wide{grid-template-columns:1fr}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#f4efe4;font-weight:600}
+  td{color:#332e27}
+
+  .tag{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;font-weight:600}
+  .tag.ok{background:#e4f3e9;color:var(--ok)}
+  .tag.no{background:#fbe6e3;color:var(--acc)}
+  .tag.mid{background:#fdf1dc;color:var(--warn)}
+
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:13px;color:var(--ink-2)}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}.wrap{padding:28px 18px 60px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">第二届全国人工智能应用创新大赛 · 教育命题域</div>
+  <h1>英语作文学伴 · 产品汇报</h1>
+  <div class="meta">日期 2026-10-28 ｜ 提交截止 2026-11-10 24:00（剩 13 天）｜ 阶段：工程骨架 + 视觉方向探索</div>
+</header>
+
+<div class="lead">
+  <p><b>一句话状态：</b>工程骨架已经跑通并提交；界面方向出了三套给孩子看的版本；等用户选定方向后进入正式实现。今天解决的问题是"这个产品长什么样、智能体怎么被看见"。</p>
+</div>
+
+<h2>一、产品是什么</h2>
+
+<p>一个面向<b>小学 4–6 年级与初中 7–9 年级</b>的英语写作陪伴智能体。进入页面选学段，两套提示词工程。</p>
+
+<p>它的底层逻辑是<b>双方向</b>，这是产品的两根支柱，缺一根就不成立：</p>
+
+<table>
+  <tr><th style="width:120px">方向</th><th>做什么</th><th>解决什么</th></tr>
+  <tr>
+    <td><b>正向 · 激励</b></td>
+    <td>孩子写完作文后，智能体<b>根据作文内容改造他的文章</b>，产出动画、绘本、漫画、小游戏等多模态成果</td>
+    <td>给孩子写的动力——"我写的东西变成了一个作品"</td>
+  </tr>
+  <tr>
+    <td><b>反向 · 引导</b></td>
+    <td>引导孩子把自己的作文<b>写完、写好、写完善</b></td>
+    <td>给孩子写得好的路径</td>
+  </tr>
+</table>
+
+<p>两根支柱的咬合点：正向的成果质量取决于写作质量（写得越具体，画面越丰富），于是"想做出好作品"和"想写好作文"变成同一件事。</p>
+
+<h2>二、今天做完的三件事</h2>
+
+<h3>1. 工程骨架已跑通并提交 <span class="tag ok">已完成</span></h3>
+
+<ul>
+  <li>单仓双包：<code>client/</code>（React + Vite）+ <code>server/</code>（Node + Express），ESM，不用 TypeScript</li>
+  <li>模型调用层带<b>超时、最多 2 次重试、降级话术</b>——模型挂了前端不会无限转圈</li>
+  <li>Function Calling 主循环从已部署的旧工程移植，并修掉三处硬伤（原无超时无重试、工具参数解析无保护、工具执行无异常边界）</li>
+  <li>学习者状态用 <code>node:sqlite</code>，<b>零新增依赖</b></li>
+  <li>接口契约带<b>能力协商</b>（<code>GET /api/health</code> 声明支持哪些模态），为以后接硬件、接音频留了口子且不需要改契约</li>
+</ul>
+
+<div class="hl">
+  <h4>实测结果（不是推断）</h4>
+  <ul>
+    <li>评测集 <b>9/9 通过</b>（其中不依赖模型、无 Key 也能跑）</li>
+    <li>Key 泄露自检通过：<code>.env</code> 同时被 gitignore 和 dockerignore 排除</li>
+    <li>全部接口端到端实测可通；前端构建通过</li>
+    <li><b>危机路径在无模型时仍返回完整引导话术</b>——安全关键路径不押在 LLM 在线上</li>
+  </ul>
+</div>
+
+<h3>2. 出了三套给孩子看的视觉方向 <span class="tag mid">待选定</span></h3>
+
+<p>三个方向共用同一份示例作文，只变构图、色彩、字体和交互，保证比较公平。</p>
+
+<div class="grid">
+  <div class="shot">
+    <img src="汇报配图/方向1-贴纸墙.png" alt="方向1 贴纸墙">
+    <div class="cap">
+      <b>方向 1 · 贴纸墙</b>
+      <span>成果是一面越写越满的墙。每写完一句，这句英语就被做成一张彩色贴纸卡，「啪」地贴上墙。<b>亮点：</b>丰盛感最强，空格用虚线框吊胃口；五张高饱和卡片轮转配色。</span>
+    </div>
+  </div>
+  <div class="shot">
+    <img src="汇报配图/方向2-作品胶卷.png" alt="方向2 作品胶卷">
+    <div class="cap">
+      <b>方向 2 · 作品胶卷</b>
+      <span>一句一格连成胶卷，写完的句子在大银幕上放大成画面，可以「放给他们看」。<b>亮点：</b>唯一直接兑现"变成视频"的方向；关键词被荧光笔点亮。</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="shot">
+    <img src="汇报配图/方向3-徽章收集册.png" alt="方向3 徽章收集册">
+    <div class="cap">
+      <b>方向 3 · 徽章收集册</b>
+      <span>一篇作文四枚章：起承转合。每完成一样得一枚，集齐点亮整篇。<b>亮点：</b>把"写完一篇"拆成四个可达的小目标，进度画成看得见的量而不是数字。</span>
+    </div>
+  </div>
+  <div class="shot">
+    <img src="汇报配图/三方向对比.png" alt="三方向并排对比">
+    <div class="cap">
+      <b>三方向并排</b>
+      <span>骨架、字体、色彩、主视觉、核心交互五项全部拉开，不是同一模板换配色。</span>
+    </div>
+  </div>
+</div>
+
+<h3>3. 做了游戏化加载框 <span class="tag ok">已完成</span></h3>
+
+<div class="grid">
+  <div class="shot">
+    <img src="汇报配图/加载框演示.png" alt="加载框演示">
+    <div class="cap">
+      <b>加载框（覆盖整块问答区，透明）</b>
+      <span>像游戏加载动画一样分四步：<b>读你的句子 → 挑能变成画面的词 → 想该问你什么 → 想好了</b>。带进度条、随机小知识、弹跳点。</span>
+    </div>
+  </div>
+</div>
+
+<p><b>它一次解决两个问题：</b></p>
+<ul>
+  <li><b>填满等待时间</b>——模型思考要几秒，孩子不会干等</li>
+  <li><b>让智能体"在干活"被看见</b>——等待时屏幕上显示的是"它在读你的句子、在挑词"，这正是评委最想看到的"智能体做了什么"，不需要口头解释</li>
+</ul>
+
+<h2>三、已否决的方向与原因</h2>
+
+<p>第一轮做的是成人手工美学（活版纸墨 / 分镜工作台 / 粉笔黑板），<b>用户判定"一点都不吸引小朋友"</b>，已否决。否决理由本身是今天最重要的产出之一：</p>
+
+<div class="grid">
+  <div class="shot">
+    <img src="汇报配图/已否决-活版纸墨.png" alt="已否决 活版纸墨">
+    <div class="cap"><b>已否决 · 活版纸墨</b><span>暖纸墨字、朱砂印章。美，但是给有品位的成年人看的。</span></div>
+  </div>
+  <div class="shot">
+    <img src="汇报配图/已否决-分镜工作台.png" alt="已否决 分镜工作台">
+    <div class="cap"><b>已否决 · 分镜工作台</b><span>深色木台 + 等宽体。是设计师会喜欢的工作台，不是孩子会喜欢的。</span></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="shot">
+    <img src="汇报配图/已否决-粉笔黑板.png" alt="已否决 粉笔黑板">
+    <div class="cap"><b>已否决 · 粉笔黑板</b><span>石灰板 + 粉笔。安静、庄重，离"热闹"最远。</span></div>
+  </div>
+  <div class="shot">
+    <img src="汇报配图/三方向对比.png" alt="对比">
+    <div class="cap"><b>诊断结论</b><span>三个方向共享同一个病根：把"拒绝低幼"执行成了"拒绝童趣"，交付的是安静的成人高级感。</span></div>
+  </div>
+</div>
+
+<div class="hl">
+  <h4>从否决里学到的、已经改掉的</h4>
+  <ul>
+    <li><b>不能没有反馈</b>：原来写一句只是多一行字。现在每句完成都有可见的庆祝与累积。</li>
+    <li><b>不能没有成果的丰盛感</b>：原来屏幕大半是空的。现在空格用虚线框标出来吊胃口。</li>
+    <li><b>不能是填空 worksheet</b>：原来底部是「用 <code>It smells like ______.</code> 补完」——固定句型加一个空，不需要任何智能。已改为智能体读孩子的原句、挑词、据此提问。</li>
+    <li><b>色彩要大胆但有纪律</b>：强调色控制在画面 15% 以内，不是色彩爆炸。</li>
+  </ul>
+</div>
+
+<h2>四、技术底数：什么验证过了，什么没有</h2>
+
+<table>
+  <tr><th style="width:38%">项</th><th style="width:100px">状态</th><th>说明</th></tr>
+  <tr><td>React + Vite + Express 骨架</td><td><span class="tag ok">已验证</span></td><td>构建通过、接口端到端可通</td></tr>
+  <tr><td>模型调用（超时/重试/降级）</td><td><span class="tag ok">已验证</span></td><td>无 Key 时降级链路实测正常</td></tr>
+  <tr><td>评测集（9 条离线）</td><td><span class="tag ok">已验证</span></td><td>9/9 通过，无 Key 可跑</td></tr>
+  <tr><td>Key 保护</td><td><span class="tag ok">已验证</span></td><td>gitignore + dockerignore + 提交前自检脚本</td></tr>
+  <tr><td><b>模型能否生成图片/视频</b></td><td><span class="tag no">未验证</span></td><td><b>最大不确定性。</b>用户称另有一枚 Kimi API 可覆盖全部产出形态，但尚未探测。探测脚本已写好待跑</td></tr>
+  <tr><td>三个视觉方向</td><td><span class="tag mid">待选定</span></td><td>静态首屏已出，带动效；交互与移动端未做</td></tr>
+</table>
+
+<p><b>应对方式：</b>三个视觉方向全部<b>不押注</b>生图/生视频 API——画面由排版、SVG 材质滤镜和浏览器能力生成。若 Kimi 验证可用，只作为增强层接入，不改变方向成立。</p>
+
+<h2>五、下一步</h2>
+
+<ol>
+  <li><b>选定视觉方向</b>（贴纸墙 / 作品胶卷 / 徽章收集册）——选定后才做完整页面、交互、移动端</li>
+  <li><b>跑 Kimi API 能力探测</b>——30 分钟，决定"变成视频/绘本"是走 API 还是走代码渲染</li>
+  <li>按选定方向做完整页面 + 三处基本动效，然后派独立评审</li>
+  <li>11-07 冻结新功能，11-08 至 11-10 只做三件套打包上传</li>
+</ol>
+
+<footer>
+  <p>本报告所有截图均为实际渲染产出，非示意图。证据文件位于 <code>.oil-ui/writing-agent-directions/</code>（候选 HTML、方向卡、评测集、截图）。</p>
+  <p>红线自查：本报告与全部截图均未出现学校名称、学生姓名、指导教师信息。</p>
+</footer>
+
+</div>
+</body>
+</html>
