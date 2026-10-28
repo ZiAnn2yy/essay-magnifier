@@ -1,0 +1,30 @@
+# 依赖目录（镜像内由 npm ci 重新安装）
+node_modules
+**/node_modules
+
+# Git 元数据
+.git
+.gitignore
+
+# 本地构建产物（镜像内由 vite build 重新生成）
+client/dist
+**/dist
+**/build
+
+# IDE / 工具目录
+.joycode
+.claude
+
+# 系统与日志文件
+.DS_Store
+Thumbs.db
+*.log
+
+# 运行时数据库
+server/data
+
+# ===== 安全：.env 必须排除 =====
+# dogdog 曾在此处刻意保留 .env，导致模型 API Key 被打进 Docker 镜像并上传至 DevCloud。
+# 新工程的容器配置一律通过 DevCloud 平台的环境变量注入，不靠拷贝文件。
+.env
+**/.env
