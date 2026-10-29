@@ -2,12 +2,19 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
+  /* 轨道必须被容器宽度兜住。place-items:center 会让 auto 轨道按 max-content
+     定尺，而跑马灯轨道是 width:max-content（两条无限长的字幕），
+     不写这一行整个内层会被撑到远超视口，标题和按钮一起被推到屏幕外——
+     症状是页面出现横向滚动条、首屏只剩一条字幕的尾巴。 */
+  grid-template-columns: minmax(0, 1fr);
   padding: 28px 20px 36px;
   overflow-y: auto;
 }
 
 .start-inner {
   width: min(720px, 100%);
+  /* flex 列里的子项同样要允许被压缩，否则 max-content 会再次穿透 */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
