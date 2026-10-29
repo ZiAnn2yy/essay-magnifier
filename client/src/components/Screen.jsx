@@ -1,69 +1,5 @@
 import './Screen.css';
-
-/**
- * 把句子里被智能体挑中的词包进 <em>，让荧光笔只落在这些词上。
- *
- * 中文没有空格，所以不能按词切分，只能**子串定位**：拿挑中的词回句子里
- * 找第一次出现的位置，把那一截包起来。两个细节：
- *
- * 1. **区间去重**——「金黄」和「金灿灿」可能压在同一处，也可能一个套在
- *    另一个里。先占住的区间不让后面的词再切进去，否则会切出嵌套的 <em>。
- * 2. **按出现顺序输出**——荧光笔要顺着读句子的方向依次亮，不是按词库顺序。
- *
- * 顺带好处：英文也不再需要拆标点，「window.」只会命中「window」，
- * 句号天然留在荧光笔外面。
- */
-function renderSentence(sentence, picks) {
-  const list = Array.isArray(picks) ? picks : [];
-  if (list.length === 0) return sentence;
-
-  const marks = [];
-  const covered = [];
-
-  for (const word of list) {
-    if (typeof word !== 'string' || word.length === 0) continue;
-
-    let from = 0;
-    for (;;) {
-      const index = sentence.indexOf(word, from);
-      if (index === -1) break;
-
-      const overlaps = covered.some(
-        (span) => index < span.end && index + word.length > span.start,
-      );
-
-      if (!overlaps) {
-        covered.push({ start: index, end: index + word.length });
-        marks.push({ start: index, end: index + word.length, word });
-        break;
-      }
-      from = index + 1;
-    }
-  }
-
-  if (marks.length === 0) return sentence;
-
-  marks.sort((a, b) => a.start - b.start);
-
-  const nodes = [];
-  let cursor = 0;
-
-  marks.forEach((mark, markIndex) => {
-    if (mark.start > cursor) {
-      nodes.push(
-        <span key={`text-${markIndex}`}>{sentence.slice(cursor, mark.start)}</span>,
-      );
-    }
-    nodes.push(<em key={`mark-${markIndex}`}>{mark.word}</em>);
-    cursor = mark.end;
-  });
-
-  if (cursor < sentence.length) {
-    nodes.push(<span key="tail">{sentence.slice(cursor)}</span>);
-  }
-
-  return nodes;
-}
+import { markSegments } from '../lib/highlight.js';
 
 /**
  * 大银幕：当前这一句被放大成"画面"。
@@ -95,7 +31,15 @@ export default function Screen({ frame, index, total, picksEnabled }) {
 
       {/* key 让换格时整个节点重建，滑入和荧光笔动画才会重放 */}
       <div key={frame.id} className="screen-body">
-        <p className="screen-text">{renderSentence(frame.text, picks)}</p>
+        <p className="screen-text">
+          {markSegments(frame.text, picks).map((segment, segmentIndex) =>
+            segment.isMark ? (
+              <em key={`mark-${segmentIndex}`}>{segment.text}</em>
+            ) : (
+              <span key={`text-${segmentIndex}`}>{segment.text}</span>
+            ),
+          )}
+        </p>
       </div>
 
       {/* 底部信息带：银幕的"下沿"。
