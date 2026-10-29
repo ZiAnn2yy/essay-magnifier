@@ -1,0 +1,84 @@
+.essay {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift);
+  overflow: hidden;
+}
+
+.essay-head {
+  padding: 14px 18px 10px;
+  border-bottom: 2px dashed var(--sky-2);
+}
+
+.essay-title {
+  margin: 0;
+  font-family: var(--font-round);
+  font-size: clamp(19px, 2.2vw, 24px);
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.essay-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* 长范文必须在自己容器里滚：body 是 overflow:hidden，整页不滚是既有铁律 */
+.essay-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 20px;
+  font-size: var(--fs-essay);
+  line-height: 2;
+  color: var(--ink);
+}
+
+.essay-para {
+  margin: 0 0 1em;
+  text-indent: 2em;
+}
+
+.essay-para:last-child {
+  margin-bottom: 0;
+}
+
+/* 荧光笔：半透明黄压住字，圆角模拟粗头笔。
+   招式用的是黄，新鲜词用粉——两者都是"被看见"，但来源不同：
+   黄=这一招，粉=这个词有新鲜感。 */
+.essay-mark {
+  font-style: normal;
+  border-radius: 999px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.essay-mark.is-move {
+  background: rgba(255, 210, 63, 0.72);
+  cursor: pointer;
+  border-bottom: 2px solid var(--orange);
+}
+
+.essay-mark.is-move:hover {
+  background: var(--yellow);
+}
+
+.essay-mark.is-word {
+  background: rgba(255, 93, 143, 0.28);
+}
+
+.essay-active {
+  margin: 0;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--yellow);
+  border-top: 2px solid var(--ink);
+}

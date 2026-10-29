@@ -1,29 +1,77 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import './styles/app.css';
+import Gate from './components/Gate.jsx';
 import StageGate from './components/StageGate.jsx';
-import Workbench from './components/Workbench.jsx';
+import Analyzer from './components/Analyzer.jsx';
+import { checkAccess, unlock } from './api.js';
 
 /**
- * 入口：选年级 → 胶卷工作台。
+ * 范文放大镜。
  *
- * 选到"年级"而不是"学段带"：挑词的开关在三年级（课标把"有新鲜感的词句"
- * 放在第二学段 3-4 年级），而学段带是 1-3 / 4-6，三年级落在低段里。
- * 只选段定不了行为，必须选到年级。见 data/writingBands.js。
+ * 三层：访问门槛 → 选年级 → 主界面（选范文 / 拆解 / 用一招写自己的）。
+ * 没有路由库，页面靠 state 三元切——三屏的产品引一个 router 是净成本。
  *
- * `?grade=` 是录屏和评审用的深链，不改变产品流程，只是跳过入口。
+ * `?grade=3..6` 是录屏和评审用的深链，不改变产品流程，只是跳过入口。
  */
+const MIN_GRADE = 3;
+const MAX_GRADE = 6;
+
 function initialGrade() {
   const raw = new URLSearchParams(window.location.search).get('grade');
   const grade = Number(raw);
-  return Number.isInteger(grade) && grade >= 1 && grade <= 6 ? grade : null;
+  return Number.isInteger(grade) && grade >= MIN_GRADE && grade <= MAX_GRADE ? grade : null;
 }
 
 export default function App() {
+  // null = 还在问服务端要不要密码。这时候别渲染主界面，
+  // 否则会在门槛后面闪一下内容——门槛必须是第一眼看到的东西。
+  const [access, setAccess] = useState(null);
   const [grade, setGrade] = useState(initialGrade);
+
+  const ask = useCallback(() => {
+    checkAccess()
+      .then(setAccess)
+      .catch(() => setAccess({ required: false, unlocked: false, unreachable: true }));
+  }, []);
+
+  useEffect(() => {
+    ask();
+  }, [ask]);
+
+  if (access === null) {
+    return (
+      <main className="boot">
+        <p>在问服务要不要密码…</p>
+      </main>
+    );
+  }
+
+  if (access.unreachable) {
+    return (
+      <main className="boot">
+        <p className="boot-title">连不上服务</p>
+        <p className="boot-hint">前端跑起来了，但后端没有应答。检查服务是否启动。</p>
+        <button type="button" className="boot-retry" onClick={ask}>
+          再试一次
+        </button>
+      </main>
+    );
+  }
+
+  if (access.required && !access.unlocked) {
+    return (
+      <Gate
+        onUnlocked={async (code) => {
+          await unlock(code);
+          setAccess({ required: true, unlocked: true });
+        }}
+      />
+    );
+  }
 
   if (grade === null) {
     return <StageGate onPick={setGrade} />;
   }
 
-  return <Workbench grade={grade} onGradeChange={setGrade} />;
+  return <Analyzer grade={grade} onBack={() => setGrade(null)} />;
 }

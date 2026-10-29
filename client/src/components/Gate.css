@@ -1,0 +1,98 @@
+.gate-lock {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.gate-lock-card {
+  width: min(380px, 100%);
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-lg);
+  padding: 28px 26px 22px;
+  /* 门不要端端正正——和纸上贴的东西一样，稍微歪一点 */
+  transform: rotate(-0.6deg);
+}
+
+.gate-lock-title {
+  margin: 0 0 6px;
+  font-family: var(--font-round);
+  font-size: 30px;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.gate-lock-lead {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.gate-lock-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.gate-lock-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  font-family: var(--font-round);
+  font-size: 16px;
+  color: var(--ink);
+  background: var(--sky);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.gate-lock-input:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.gate-lock-error {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--pink);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.gate-lock-submit {
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px;
+  font-family: var(--font-round);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--orange);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift);
+  cursor: pointer;
+}
+
+.gate-lock-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gate-lock-submit:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.gate-lock-hint {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+}

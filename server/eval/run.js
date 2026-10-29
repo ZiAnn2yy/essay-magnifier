@@ -4,10 +4,10 @@
  * 规范§七：先写通过条件，再写用例；通过条件必须可检查，
  * 不写"质量好"这类空话。约 20 个用例，每次改动提示词或模型后都重跑。
  *
- * 当前进度（骨架期）：
- *   - 离线用例 8 条，全部不依赖模型，无 Key 也能跑
+ * 当前进度（2026-10-29 方向转向后）：
+ *   - 离线用例 16 条，全部不依赖模型，无 Key 也能跑
  *   - 在线用例 2 条，需要 LLM_API_KEY，缺 Key 时跳过
- *   - 内容相关用例待与指导教师沟通教学设计后补充
+ *   - 覆盖三个出口：范文拆解、读者回应、访问门槛（后者靠手工 curl 验，见 docs）
  *
  * 判分一律用确定性断言，不上 model-as-judge——判分越确定，重跑越勤，护栏才真有意义。
  *
@@ -21,6 +21,11 @@ import { config } from '../src/config.js';
 async function runCase(testCase) {
   if (testCase.requiresKey && !config.llmReady) {
     return { id: testCase.id, status: 'SKIP', detail: '需要模型 Key，已跳过' };
+  }
+  // 反相闸门：测的是"模型不可用"这条路径，有 Key 时它必然不成立。
+  // 没有这道闸门，用例的通过条件就会随环境漂移——同一个用例在有 Key 的机器上必挂。
+  if (testCase.skipWhenKey && config.llmReady) {
+    return { id: testCase.id, status: 'SKIP', detail: '已配置模型 Key，降级路径不适用，已跳过' };
   }
 
   try {
