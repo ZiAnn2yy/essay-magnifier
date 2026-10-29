@@ -7,6 +7,10 @@ dist/
 .env
 .env.local
 .env.*.local
+# 变体一起挡住：备份、按环境拆分的都算。只放行 .env.example（值是空的）
+# 今天差点把 .env.kimi.bak 连 Key 一起提交，补这条规则堵住。
+.env.*
+!.env.example
 
 # 运行时数据库（schema 由代码创建，不入库）
 server/data/
