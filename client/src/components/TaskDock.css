@@ -188,8 +188,6 @@
   white-space: pre-wrap;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .dock-reply {
-    animation: none;
-  }
+html.motion-off .dock-reply {
+  animation: none;
 }

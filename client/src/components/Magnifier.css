@@ -29,9 +29,6 @@
   85%, 100% { transform: translateX(210px); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .magnifier,
-  .magnifier-shine {
-    animation: none;
-  }
+html.motion-off .magnifier, html.motion-off .magnifier-shine {
+  animation: none;
 }

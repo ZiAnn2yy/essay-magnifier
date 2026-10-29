@@ -225,14 +225,10 @@
   color: var(--ink-soft);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .move,
-  .move-use,
-  .move-collect {
-    transition: none;
-  }
+html.motion-off .move, html.motion-off .move-use, html.motion-off .move-collect {
+  transition: none;
+}
 
-  .move-deal {
-    animation: none;
-  }
+html.motion-off .move-deal {
+  animation: none;
 }

@@ -1,0 +1,45 @@
+/* 小到不该被注意，但必须找得到。放在角落，不占主动作的位置。 */
+.motion-toggle {
+  position: absolute;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 13px;
+  font-family: var(--font-round);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.motion-toggle.is-corner {
+  right: 16px;
+  bottom: 16px;
+}
+
+.motion-toggle:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* 状态点：开着是绿的，关着是灰的。颜色只说状态，不做装饰 */
+.motion-toggle-dot {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.motion-toggle-dot {
+  background: var(--green);
+}
+
+html.motion-off .motion-toggle-dot {
+  background: var(--ink-soft);
+}

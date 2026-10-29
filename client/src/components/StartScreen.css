@@ -93,23 +93,26 @@
   color: var(--ink-soft);
 }
 
-/* 跑马灯：滚的是真范文里的句子。慢、不间断，像街上过的车 */
+/* 跑马灯：滚的是真范文里的句子。慢、不间断，像街上过的车。
+   倾斜写在这里就够，不再挂入场动画——animation 的填充态会覆盖
+   transform，把那 -0.5deg 的倾斜吃掉（这个 bug 藏了一轮没人发现）。 */
 .start-marquee {
   width: 100%;
   overflow: hidden;
-  padding: 10px 0;
+  padding: 11px 0;
   border-top: 3px solid var(--ink);
   border-bottom: 3px solid var(--ink);
   background: var(--white);
-  /* 微微歪一点：纸上贴的东西没有正着的 */
   transform: rotate(-0.5deg);
-  animation: start-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.34s both;
 }
 
 .start-marquee-track {
   display: flex;
   width: max-content;
-  animation: start-roll 38s linear infinite;
+  /* 24 秒一轮：38 秒那版慢到看不出在动，用户专门回来要求"动态的循环"。
+     再快就成跑马灯噪音了，这个速度是"看得见在走、又不打扰阅读"的档。 */
+  animation: start-roll 24s linear infinite;
+  will-change: transform;
 }
 
 .start-marquee-run {
@@ -121,9 +124,9 @@
 .start-marquee-cell {
   flex: none;
   max-width: 22em;
-  padding: 7px 13px;
+  padding: 8px 14px;
   font-family: var(--font-round);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   color: var(--ink);
   white-space: nowrap;
@@ -218,13 +221,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .start-kicker,
-  .start-title,
-  .start-lead,
-  .start-marquee,
-  .start-go,
-  .start-go-arrow {
-    animation: none;
-  }
+html.motion-off .start-kicker, html.motion-off .start-title, html.motion-off .start-lead, html.motion-off .start-marquee, html.motion-off .start-go, html.motion-off .start-go-arrow {
+  animation: none;
 }

@@ -46,11 +46,11 @@
   }
 }
 
-/* 关掉动画时不能让它消失——退成静态贴在屏幕上，仍然低透明度 */
-@media (prefers-reduced-motion: reduce) {
-  .scatter-item {
-    animation: none;
-    opacity: 0.42;
-    transform: translate(-50%, var(--y)) rotate(var(--rot));
-  }
+/* 关掉动画时不能让它消失——退成静态贴在屏幕上，仍然低透明度。
+   落点 --y 由 JS 按索引铺开，不要挤在少数几个高度上：
+   挤在一起会读成"坏了"，而不是"这是静态版本"。 */
+html.motion-off .scatter-item {
+  animation: none;
+  opacity: 0.42;
+  transform: translate(-50%, var(--y)) rotate(var(--rot));
 }

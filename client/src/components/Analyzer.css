@@ -303,14 +303,11 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .an-loading-bar span {
-    animation: none;
+html.motion-off .an-loading-bar span {
+  animation: none;
     width: 100%;
-  }
+}
 
-  .an-book.is-punched,
-  .basis {
-    animation: none;
-  }
+html.motion-off .an-book.is-punched, html.motion-off .basis {
+  animation: none;
 }

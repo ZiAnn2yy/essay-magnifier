@@ -28,8 +28,6 @@
   50% { background-position: 100% 0; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .flow-wash {
-    animation: none;
-  }
+html.motion-off .flow-wash {
+  animation: none;
 }

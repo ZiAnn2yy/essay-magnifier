@@ -2,6 +2,7 @@ import './StartScreen.css';
 import Magnifier from './Magnifier.jsx';
 import StickerLayer from './StickerLayer.jsx';
 import FlowWash from './FlowWash.jsx';
+import MotionToggle from './MotionToggle.jsx';
 import { ESSAYS } from '../data/essays.js';
 
 /**
@@ -71,6 +72,8 @@ export default function StartScreen({ onStart }) {
         <footer className="start-foot">
           <p>你写的东西存在这台设备上。我们不问你的名字，也不问你的学校。</p>
         </footer>
+
+        <MotionToggle />
       </div>
     </main>
   );

@@ -5,6 +5,11 @@ import StartScreen from './components/StartScreen.jsx';
 import StageGate from './components/StageGate.jsx';
 import Analyzer from './components/Analyzer.jsx';
 import { checkAccess, unlock } from './api.js';
+import { applyMotion } from './lib/motionPreference.js';
+
+// 在模块加载时就定好动效状态，不等首帧——
+// 等 useEffect 再切 class，第一帧会先按"全开"画一帧再跳成静态，肉眼能看见闪一下。
+applyMotion();
 
 /**
  * 范文放大镜。

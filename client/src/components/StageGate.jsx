@@ -56,10 +56,6 @@ export default function StageGate({ onPick }) {
             </div>
           ))}
         </section>
-
-        <footer className="gate-foot">
-          <p>你写的东西存在这台设备上。我们不问你的名字，也不问你的学校。</p>
-        </footer>
       </div>
     </main>
   );

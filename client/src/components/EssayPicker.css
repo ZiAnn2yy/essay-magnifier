@@ -149,8 +149,6 @@
   box-shadow: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .picker-card {
-    transition: none;
-  }
+html.motion-off .picker-card {
+  transition: none;
 }
