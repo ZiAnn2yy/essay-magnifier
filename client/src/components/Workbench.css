@@ -1,0 +1,110 @@
+/* 工作台：一屏四区，银幕吃掉所有剩余高度。
+   整页不滚动——胶卷和问答区是"设备"，银幕是"画面"，滚起来就散了。 */
+.wb {
+  height: 100%;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 13px 20px 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 顶栏 ---------- */
+.wb-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wb-h1 {
+  font-size: clamp(17px, 2.4vw, 21px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* 片名：可点改。样式上要"看起来能点"，但不能比主动作抢 */
+.wb-title-btn,
+.wb-title-input {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.72);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 4px 13px;
+  max-width: 15em;
+}
+
+.wb-title-btn {
+  cursor: pointer;
+  transition: border-color 0.16s;
+}
+
+.wb-title-btn:hover {
+  border-color: var(--sky-2);
+}
+
+.wb-title-input:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+
+.wb-count {
+  background: var(--white);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 4px 13px;
+  box-shadow: var(--lift-sm);
+}
+
+.wb-stages {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+}
+
+.wb-stages button {
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink-soft);
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+
+.wb-stages button.is-on {
+  background: var(--ink);
+  color: var(--sky);
+}
+
+/* ---------- 问答区容器 ----------
+   position:relative 的唯一理由：让加载框能绝对定位铺满它 */
+.wb-dock {
+  position: relative;
+  flex: none;
+}
+
+@media (max-width: 620px) {
+  .wb {
+    padding: 11px 13px 14px;
+    gap: 10px;
+  }
+
+  .wb-head {
+    gap: 7px;
+  }
+
+  .wb-stages {
+    margin-left: 0;
+  }
+}

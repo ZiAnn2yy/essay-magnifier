@@ -1,0 +1,180 @@
+/* 大银幕：白底、橙框、厚投影。画面里唯一的大字号给孩子的句子 */
+.screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--white);
+  border: 6px solid var(--orange);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-lg);
+  padding: clamp(20px, 3.4vw, 34px) clamp(22px, 3.6vw, 38px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* 格位角标 */
+.screen-tag {
+  position: absolute;
+  top: clamp(12px, 2vw, 18px);
+  left: clamp(14px, 2.4vw, 22px);
+  background: var(--orange);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 13px;
+  border-radius: 999px;
+}
+
+/* 右上角一个播放记号，暗示"这是一格片子" */
+.screen-corner {
+  position: absolute;
+  right: clamp(16px, 2.6vw, 26px);
+  bottom: clamp(12px, 2vw, 18px);
+  font-size: 22px;
+  color: var(--sky-2);
+  animation: sparkle 3.4s ease-in-out infinite;
+}
+
+/* ---------- 中部：孩子的句子 ---------- */
+.screen-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  animation: slidein 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 孩子的句子：绝对主角。
+   幼圆 + 0.7px 描边是本机实测的结论（见 app.css 里 --font-round 的注释）：
+   幼圆是唯一可用的圆体但只有 regular 一档，雅黑 Bold 有真粗却会把荧光笔
+   压没，0.7px 描边是唯一两者都保住的档位。 */
+.screen-text {
+  font-family: var(--font-round);
+  font-size: var(--fs-sentence);
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+/* ---------- 底部信息带 ----------
+   这一带是银幕的"下沿"。有了它，画面是被托住的构图，
+   而不是一行字漂在白盒子正中——后者正是"大半屏幕空着"的病根。
+   只在有挑中的词时渲染，低年级整带不出现。 */
+.screen-foot {
+  flex: none;
+  border-top: 2px solid var(--sky);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.screen-picks {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 小标签：告诉看的人这排词是智能体挑出来的，不是装饰 */
+.screen-picks-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  flex: none;
+}
+
+.screen-picks-list {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.screen-pick {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--orange);
+  border: 2.5px solid var(--orange);
+  border-radius: 999px;
+  padding: 3px 13px;
+  background: rgba(255, 107, 53, 0.06);
+  animation: pickin 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes pickin {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- 关键词荧光笔 ---------- */
+.screen-text em {
+  font-style: normal;
+  color: var(--orange);
+  position: relative;
+  /* 让荧光笔下沿压在文字基线附近，像真的划过去 */
+  padding: 0 2px;
+}
+
+.screen-text em::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: 0.06em;
+  height: 0.34em;
+  background: var(--yellow);
+  opacity: 0.6;
+  border-radius: 4px;
+  z-index: -1;
+  transform-origin: left center;
+  animation: swipe 0.42s 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 改过的格子在银幕上留痕。hover 显示上一版原文——
+   课标把"修改自己的习作"放在核心位置，"我改了什么"要看得见 */
+.screen-rev {
+  position: absolute;
+  right: clamp(16px, 2.6vw, 26px);
+  top: clamp(12px, 2vw, 18px);
+  background: var(--sky);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  cursor: help;
+}
+
+/* ---------- 空格 ---------- */
+.screen-empty {
+  border-style: dashed;
+  border-color: var(--sky-2);
+  background: rgba(255, 255, 255, 0.55);
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.screen-empty-text {
+  font-size: clamp(24px, 4.4vw, 38px);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.screen-empty-sub {
+  font-size: 15px;
+  color: var(--ink-soft);
+}

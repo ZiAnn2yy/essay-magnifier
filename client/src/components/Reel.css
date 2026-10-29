@@ -1,0 +1,115 @@
+/* 胶卷：深色带子 + 真负形齿孔。横向是它的本性，不强行竖排 */
+.reel {
+  background: var(--ink);
+  border-radius: var(--r-md);
+  padding: 14px 0;
+  position: relative;
+  box-shadow: var(--lift);
+  flex: none;
+}
+
+.reel::before,
+.reel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 7px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 9px,
+    var(--sky) 9px 18px
+  );
+}
+
+.reel::before {
+  top: 0;
+}
+
+.reel::after {
+  bottom: 0;
+}
+
+.reel-cells {
+  display: flex;
+  gap: 9px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.reel-cells::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- 已写下的一格 ---------- */
+.reel-cell {
+  flex: 1 1 0;
+  min-width: 96px;
+  background: var(--white);
+  border-radius: 7px;
+  padding: 9px 11px 8px;
+  font-size: var(--fs-frame);
+  font-weight: 600;
+  line-height: 1.32;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  position: relative;
+  transition:
+    background 0.16s,
+    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 格序号：小小一枚，压在左上角 */
+.reel-num {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.reel-cell:hover {
+  transform: translateY(-3px);
+}
+
+/* 银幕上正在放的那一格：黄色，和银幕里的荧光笔同一个色 */
+.reel-cell.is-active {
+  background: var(--yellow);
+}
+
+.reel-cell.is-active .reel-num {
+  color: rgba(23, 56, 77, 0.6);
+}
+
+/* 新格"啪"地落进带子：缩小 + 倾斜 + 过冲回正 */
+.reel-cell.is-new {
+  animation: dropin 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ---------- 空格 ---------- */
+.reel-blank {
+  flex: 1 1 0;
+  min-width: 96px;
+  border: 2px dashed rgba(191, 233, 255, 0.38);
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(191, 233, 255, 0.5);
+  padding: 9px 6px;
+}
+
+@media (max-width: 620px) {
+  .reel-cell,
+  .reel-blank {
+    min-width: 82px;
+  }
+}

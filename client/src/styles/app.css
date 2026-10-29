@@ -1,0 +1,237 @@
+/* ==========================================================================
+   设计令牌 · 方向 2「作品胶卷」
+   --------------------------------------------------------------------------
+   这套值是 oil-ui 三方向对比里选定的，不再凭感觉改。改任何颜色/字号前，
+   先确认它对应下面哪一条令牌，不要新增魔法数字。
+   ========================================================================== */
+
+:root {
+  /* 底色：天蓝。孩子的作业纸不该是白的 */
+  --sky: #bfe9ff;
+  --sky-2: #a5dffb;
+
+  /* 墨：深蓝，比纯黑软，压在天蓝上不脏 */
+  --ink: #17384d;
+  --ink-soft: #3f6478;
+
+  /* 三个强调色，合计控制在画面 15% 以内 */
+  --orange: #ff6b35;
+  --yellow: #ffd23f;
+  --pink: #ff5d8f;
+
+  /* 加载框里挑词用的辅助色，不与上面三个抢 */
+  --cyan: #2ec4e6;
+  --green: #7bd389;
+  --purple: #a06cd5;
+
+  --white: #fff;
+
+  /* 立体感统一来自"实心投影"——像一块厚纸板，不像漂浮的卡片 */
+  --lift: 0 5px 0 rgba(23, 56, 77, 0.16);
+  --lift-sm: 0 2px 0 rgba(23, 56, 77, 0.14);
+  --lift-lg: 0 8px 0 rgba(23, 56, 77, 0.16);
+
+  --r-lg: 26px;
+  --r-md: 14px;
+  --r-sm: 9px;
+
+  /* 孩子的句子的字号：手机到桌面连续缩放，不设断点。
+     定得这么大是因为整条设计前提就是"孩子的句子是画面主角"——
+     它必须大到能单独撑住一块白幕，小一寸银幕就空了。 */
+  --fs-sentence: clamp(30px, 6.2vw, 66px);
+
+  /* 中文圆体。本机实测（.oil-ui/.../14、15 号截图）：
+     - 幼圆是唯一可用的圆体，但只有 regular 一档，700 是伪粗，撑不起主角
+     - 微软雅黑 Bold 有真粗，但笔画太粗会把后面的黄色荧光笔压没
+     - 解法：幼圆 + 0.7px 描边。既圆又有分量，荧光笔还在
+     - 1.4px 笔画糊在一起，0.6px 偏软，0.7px 是实测甜点
+     若换机器部署，先确认目标机器有幼圆（Windows 有，macOS 对应 Yuanti SC），
+     否则会退到微软雅黑——那时要把描边降到 0.4px，不然太厚。 */
+  --font-round: 'YouYuan', '幼圆', 'Yuanti SC', 'STYuanti', 'Microsoft YaHei', sans-serif;
+  --fs-frame: clamp(11px, 1.4vw, 13px);
+}
+
+/* 自托管 Fredoka（latin 子集，可变字重 300-700，29KB）。
+   不走 Google Fonts：交付物要部署，评委网络访问 fonts.googleapis.com 不稳定，
+   字体挂了整套"孩子的句子是画面主角"就塌了。OFL 授权，可再分发。 */
+@font-face {
+  font-family: 'Fredoka';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/fredoka-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'YouYuan', '幼圆', 'Yuanti SC', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  background: var(--sky);
+  /* 一层极淡的圆点，让大片天蓝有材质而不是塑料平涂 */
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(23, 56, 77, 0.08) 1px,
+    transparent 0
+  );
+  background-size: 24px 24px;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* 孩子的英语句子一律走 Fredoka——超粗圆体，它是画面主角 */
+.en {
+  font-family: 'Fredoka', 'YouYuan', 'PingFang SC', sans-serif;
+  font-weight: 600;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+/* ==========================================================================
+   动效
+   --------------------------------------------------------------------------
+   三处基本动效 + 加载框动画。全部用 cubic-bezier 过冲，禁用 linear/ease 的
+   "默认感"——孩子的产品里，东西要"啪"地到位，不要"渐"地出现。
+   ========================================================================== */
+
+/* 1. 新句从右滑入银幕 */
+@keyframes slidein {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 2. 新格"啪"地落入胶卷：缩小 + 倾斜 + 过冲回正 */
+@keyframes dropin {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.55) rotate(-7deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08) rotate(2deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* 3a. 放映时新格放大占满银幕 */
+@keyframes framezoom {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 3b. 放映时上一格退出 */
+@keyframes frameout {
+  to {
+    opacity: 0;
+    transform: scale(1.06) translateX(-18px);
+  }
+}
+
+/* 关键词荧光笔：从左往右划过去，不是淡入 */
+@keyframes swipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* 加载框：挑中的词飞进托盘 */
+@keyframes fly {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 加载框：三个弹跳点 */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+/* 入口页装饰胶卷横向滚动 */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* 徽章/星屑这类"啪"一下的小惊喜 */
+@keyframes sparkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(18deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
