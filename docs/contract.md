@@ -1,6 +1,6 @@
 # 接口契约
 
-契约版本：**v1**
+契约版本：**v2**
 
 本文件说明前端与未来硬件客户端如何与后端协作。核心原则只有一条：
 **客户端必须先协商能力，再决定发送什么，不得假设服务端支持某种模态。**
@@ -16,14 +16,14 @@ GET /api/health
 ```json
 {
   "ok": true,
-  "contract": "v1",
+  "contract": "v2",
   "modalities": { "input": ["text"], "output": ["text"] }
 }
 ```
 
 | 字段 | 含义 |
 |---|---|
-| `contract` | 契约版本。破坏性变更会升到 `v2`，`v1` 的行为不变 |
+| `contract` | 契约版本。v2 新增绘本分镜端点，v1 端点行为不变 |
 | `modalities.input` | 服务端当前接受的内容类型 |
 | `modalities.output` | 服务端当前能返回的内容类型 |
 
@@ -105,6 +105,67 @@ POST /api/chat
 ```
 
 内部错误一律返回通用文案，不透出堆栈或上游原文（规范§四.3）。
+
+---
+
+## 绘本分镜（v2 新增）
+
+```
+POST /api/v2/storyboard
+```
+
+激励功能「放给他们看！」的导演端点：把孩子的作文交给 LLM，
+为每一格挑一张预制素材画，放映时像绘本插图垫在句子旁。
+
+请求：
+
+```json
+{
+  "grade": 3,
+  "filmTitle": "≤20 字的片名",
+  "frames": [
+    { "id": "f1", "text": "孩子写的这一句，≤500 字" }
+  ]
+}
+```
+
+| 字段 | 约束 |
+|---|---|
+| `grade` | 1–6 的整数 |
+| `filmTitle` | ≤20 字 |
+| `frames` | 1–8 格，每格 `text` ≤500 字 |
+
+响应：
+
+```json
+{
+  "ok": true,
+  "degraded": false,
+  "storyboard": {
+    "tone": "轻快地",
+    "panels": [
+      { "frameId": "f1", "assetId": "sun" }
+    ]
+  }
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `degraded` | `true` 表示走了本地关键词匹配（LLM 未配置/调用失败/返回不合法）。前端照常渲染 |
+| `storyboard.panels` | 与请求 `frames` 一一对应：`frameId` 恰好覆盖不重复，`assetId` 必在素材清单内 |
+| `storyboard.tone` | 整场基调，供前端做气氛提示 |
+
+设计要点：
+
+- **一次性旁路调用**。分镜不写会话、不进对话历史，只为放映服务。
+- **素材只能引用、不能虚构**。`assetId` 必须出自 `server/src/agent/assets.js`
+  的 42 条预制清单，LLM 越权挑选会被校验层拒绝并降级。
+- **永远返回合法分镜**。LLM 不可用时按关键词子串匹配兜底，任何一格
+  都不会空——最差也是兜底素材 `star`。
+- **素材是离线 SVG**。`client/public/canvas/{assetId}.svg` 由
+  `scripts/make-canvas-assets.mjs` 生成，随前端构建产物静态托管，
+  不涉及任何密钥或生图 API。
 
 ---
 

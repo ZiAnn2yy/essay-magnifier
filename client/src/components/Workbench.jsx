@@ -91,8 +91,10 @@ export default function Workbench({ grade, onGradeChange }) {
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(null);
   const [isScreening, setIsScreening] = useState(false);
+  // 导演产出的分镜：{ tone, panels:[{frameId,assetId}] }。null = 纯排版放映
+  const [storyboard, setStoryboard] = useState(null);
+  const [isDirecting, setIsDirecting] = useState(false);
   const inputRef = useRef(null);
-
   const picksEnabled = shouldPickWords(grade);
 
   const activeIndex = frames.findIndex((frame) => frame.id === activeId);
@@ -144,9 +146,34 @@ export default function Workbench({ grade, onGradeChange }) {
     });
   }, [draft, activeIndex]);
 
-  const handlePlay = useCallback(() => {
-    if (frames.length > 0) setIsScreening(true);
-  }, [frames.length]);
+  /**
+   * 「放给他们看！」：进放映前先请导演排画面。
+   *
+   * 分镜是一次性旁路调用，不进对话历史。任何失败（网络/超时/返回不合法）
+   * 都不拦放映——storyboard 留空，Screening 回退纯排版，孩子照样看片。
+   */
+  const handlePlay = useCallback(async () => {
+    if (frames.length === 0 || isDirecting) return;
+    setIsDirecting(true);
+    try {
+      const res = await fetch('/api/v2/storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grade,
+          filmTitle,
+          frames: frames.map((f) => ({ id: f.id, text: f.text })),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.storyboard) setStoryboard(data.storyboard);
+    } catch {
+      // 静默降级：放映不因分镜失败而中断
+    } finally {
+      setIsDirecting(false);
+      setIsScreening(true);
+    }
+  }, [frames, grade, filmTitle, isDirecting]);
 
   const activeQuestion = frames.length === 0 ? OPENING_QUESTION : question;
 
@@ -199,6 +226,7 @@ export default function Workbench({ grade, onGradeChange }) {
           onSubmit={isLatest ? handleSubmit : handleRevise}
           submitLabel={isLatest ? '写好了' : '改成这句'}
           isThinking={isThinking}
+          isDirecting={isDirecting}
           onPlay={handlePlay}
           frameCount={frames.length}
         />
@@ -217,7 +245,11 @@ export default function Workbench({ grade, onGradeChange }) {
           frames={frames}
           title={filmTitle}
           picksEnabled={picksEnabled}
-          onClose={() => setIsScreening(false)}
+          storyboard={storyboard}
+          onClose={() => {
+            setIsScreening(false);
+            setStoryboard(null);
+          }}
         />
       )}
     </main>

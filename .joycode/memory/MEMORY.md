@@ -1,0 +1,1 @@
+- [激励功能选型结论](project_incentive_feature.md) — edu-agent 激励功能（作文→漫画/绘本）的路线决策与被否方案（lemo-opuscar、ai-comic-factory）

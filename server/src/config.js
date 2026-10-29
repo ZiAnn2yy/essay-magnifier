@@ -22,6 +22,8 @@ const llm = {
   apiUrl: readStr('LLM_API_URL'),
   apiKey: readStr('LLM_API_KEY'),
   model: readStr('LLM_MODEL'),
+  // 当前模型只接受 temperature=1；做成可配置，换模型时不必改代码
+  temperature: Number(readStr('LLM_TEMPERATURE', '1')) || 1,
 };
 
 export const config = {

@@ -17,12 +17,21 @@ function upstreamError(message, retryable) {
   return error;
 }
 
-async function callOnce({ messages, tools }) {
+/**
+ * 默认 max_tokens。
+ *
+ * 2048 是骨架期的值，对**推理模型不够**：实测 kimi-k2.6 跑绘本导演时
+ * `reasoning_tokens` 吃掉 2047/2048，正文 0 字、finish_reason=length，
+ * 上层只能走降级。所以调用方可以按需传 maxTokens，导演这类任务传 8192。
+ */
+const DEFAULT_MAX_TOKENS = 2048;
+
+async function callOnce({ messages, tools, toolChoice, maxTokens = DEFAULT_MAX_TOKENS }) {
   const body = {
     model: config.llm.model,
     messages,
-    max_tokens: 2048,
-    temperature: 0.3,
+    max_tokens: maxTokens,
+    temperature: config.llm.temperature,
   };
 
   if (Array.isArray(tools) && tools.length > 0) {
@@ -34,11 +43,24 @@ async function callOnce({ messages, tools }) {
         parameters: tool.parameters,
       },
     }));
+
+    // 注：绘本导演**不走**这条路。导演改为 JSON 文本往返 + 稳健解析，
+    // 因为当前推理模型的 thinking 模式不兼容 tool_choice: specified。
+    // 见 agent/storyboard.js 顶部说明。这里保留给 kernel 用。
+    if (toolChoice) {
+      body.tool_choice = { type: 'function', function: { name: toolChoice } };
+    }
   }
 
   let response;
   try {
-    response = await fetch(config.llm.apiUrl, {
+    // OpenAI 兼容协议的聊天端点是 {base}/chat/completions。
+    // 允许 LLM_API_URL 只填到 /v1 为止（常见写法），这里统一补全后缀。
+    const endpoint = config.llm.apiUrl.endsWith('/chat/completions')
+      ? config.llm.apiUrl
+      : `${config.llm.apiUrl.replace(/\/$/, '')}/chat/completions`;
+
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,12 +96,12 @@ async function callOnce({ messages, tools }) {
  * 调用模型，带超时与最多 maxRetries 次重试。
  * 全部失败后抛出，由上层决定怎么降级——这里不吞错误。
  */
-export async function chatCompletion({ messages, tools }) {
+export async function chatCompletion({ messages, tools, toolChoice, maxTokens }) {
   let lastError = null;
 
   for (let attempt = 0; attempt <= config.maxRetries; attempt += 1) {
     try {
-      return await callOnce({ messages, tools });
+      return await callOnce({ messages, tools, toolChoice, maxTokens });
     } catch (error) {
       lastError = error;
       if (error.retryable !== true) break;

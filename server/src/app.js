@@ -7,11 +7,12 @@ import { errorResponse } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import chatRouter from './routes/chat.js';
 import learnerRouter from './routes/learner.js';
+import storyboardRouter from './routes/storyboard.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-/** 接口契约版本。能力协商见 docs/contract.md */
-const CONTRACT_VERSION = 'v1';
+/** 接口契约版本。能力协商见 docs/contract.md；v2 新增绘本分镜端点 */
+const CONTRACT_VERSION = 'v2';
 
 export function createApp() {
   const app = express();
@@ -31,6 +32,7 @@ export function createApp() {
 
   app.use('/api/chat', chatRouter);
   app.use('/api/learner', learnerRouter);
+  app.use('/api/v2/storyboard', storyboardRouter);
 
   // ===== 生产模式：托管前端构建产物 =====
   // 与 dogdog 同构：单个服务同时提供 API 与页面，避免再开一个端口和一层 CORS

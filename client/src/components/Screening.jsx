@@ -16,12 +16,13 @@ const WASHES = [
  *
  * 这是正向激励的兑现点——孩子写的东西被当成一部片子放出来。
  *
- * 关于"画面"：本模式**不生成图片或视频**。每一格的画面由排版、色罩和
- * 动效构成——孩子的句子是绝对主角，关键词逐字点亮。这不是权宜之计，
- * 是刻意的选择：三个胶卷方向都不押注生图/生视频 API，若之后接入
- * Kimi 也只是在这一层加一层，不改变放映模式本身成立。
+ * 关于"画面"：每格的视觉由两层叠成——
+ *   1. 排版层：色罩 + 动效 + 关键词逐字点亮，孩子的句子是绝对主角
+ *   2. 素材层（v2 新增）：导演为每格挑一张预制 SVG 画，像绘本插图垫在句子旁
+ * 素材层是可选的——storyboard 为空（导演失败/未配置）时回退纯排版，
+ * 放映本身永远成立。素材离线预制，不调任何生图 API。
  */
-export default function Screening({ frames, title, onClose, picksEnabled }) {
+export default function Screening({ frames, title, onClose, picksEnabled, storyboard }) {
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isEnded, setIsEnded] = useState(false);
@@ -84,6 +85,9 @@ export default function Screening({ frames, title, onClose, picksEnabled }) {
   // 与 Screen 同一条规则：挑不挑词在渲染时按年级决定，不存进数据
   const showPicks = picksEnabled && frame.picks ? frame.picks : [];
   const wash = WASHES[index % WASHES.length];
+  // 导演为这一格挑的画。没挑到（无分镜/该格缺席）就不渲染素材层
+  const panel = storyboard?.panels?.find((p) => p.frameId === frame.id);
+  const assetId = panel?.assetId;
 
   return (
     <div
@@ -140,6 +144,15 @@ export default function Screening({ frames, title, onClose, picksEnabled }) {
         </section>
       ) : (
         <section className="show-stage" key={frame.id}>
+          {assetId && (
+            <img
+              className="show-art"
+              src={`/canvas/${assetId}.svg`}
+              alt=""
+              aria-hidden="true"
+            />
+          )}
+
           <div className="show-frame">
             <p className="show-text">{frame.text}</p>
           </div>

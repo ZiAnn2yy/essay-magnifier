@@ -118,6 +118,26 @@
   animation: framezoom 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* 绘本插图：导演为这一格挑的画。垫在句子上方，像绘本跨页 */
+.show-art {
+  width: clamp(110px, 20vw, 200px);
+  height: auto;
+  border-radius: 22px;
+  filter: drop-shadow(0 8px 28px rgba(0, 0, 0, 0.4));
+  animation: artin 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes artin {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .show-frame {
   display: flex;
   flex-direction: column;

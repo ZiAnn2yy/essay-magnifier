@@ -24,6 +24,7 @@ const AskDock = forwardRef(function AskDock(
     onSubmit,
     submitLabel = '写好了',
     isThinking,
+    isDirecting,
     onPlay,
     frameCount,
   },
@@ -72,9 +73,9 @@ const AskDock = forwardRef(function AskDock(
           type="button"
           className="dock-play"
           onClick={onPlay}
-          disabled={frameCount === 0}
+          disabled={frameCount === 0 || isDirecting}
         >
-          放给他们看！
+          {isDirecting ? '排画面中…' : '放给他们看！'}
         </button>
       </div>
     </section>
