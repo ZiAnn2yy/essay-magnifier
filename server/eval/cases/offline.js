@@ -23,6 +23,7 @@ import {
   buildAnalysis,
 } from '../../src/agent/analyze.js';
 import { buildReaderReply } from '../../src/agent/reader.js';
+import { lookupStandards, renderStandards } from '../../src/agent/standards.js';
 
 const MAX_LENGTH = 500;
 
@@ -199,13 +200,13 @@ export const offlineCases = [
         moves: [{ id: 'm1', name: '把动作放慢写', quote: '爷爷的手很粗糙，可是很暖', why: 'x', tryThis: 'y' }],
       };
 
-      const rejectedFabricated = isValidAnalysis(fabricated, essay) === false;
-      const acceptedVerbatim = isValidAnalysis(verbatim, essay) === true;
+      const rejectedFabricated = isValidAnalysis(fabricated, essay) !== null;
+      const acceptedVerbatim = isValidAnalysis(verbatim, essay) === null;
       const passed = rejectedFabricated && acceptedVerbatim;
       return {
         passed,
         detail: passed
-          ? '编造引用被拒、真实引用放行'
+          ? `编造引用被拒（${isValidAnalysis(fabricated, essay)}）、真实引用放行`
           : `编造未拒=${!rejectedFabricated} 真实未收=${!acceptedVerbatim}`,
       };
     },
@@ -228,8 +229,8 @@ export const offlineCases = [
         { ...good, paragraphs: [{ index: 1, text: essay, role: '', note: '' }] },
         { ...good, freshWords: [{ word: '刨花', sentence: essay }, { word: '不存在的词', sentence: essay }] },
       ];
-      const passed = cases.every((item) => isValidAnalysis(item, essay) === false);
-      return { passed, detail: passed ? '五种畸形全部拒绝' : '有畸形结果漏过' };
+      const passed = cases.every((item) => isValidAnalysis(item, essay) !== null);
+      return { passed, detail: passed ? `五种畸形全部拒绝（首条：${isValidAnalysis(cases[0], essay)}）` : '有畸形结果漏过' };
     },
   },
   {
@@ -272,6 +273,72 @@ export const offlineCases = [
         passed,
         detail: passed ? '降级结果形状完整且未编造招式' : `paragraphs=${analysis.paragraphs.length} moves=${analysis.moves.length}`,
       };
+    },
+  },
+  {
+    // 支架撤除的载体。这条锁的是"让孩子自己找"不能是假的——
+    // 假的做法是把已标过的招式原句再问一遍，孩子一眼看穿。
+    id: 'analyze-005',
+    requiresKey: false,
+    pass: 'challenge 的原句必须逐字出自范文，且不能和已标出的招式重复（否则"自己找"是假的）',
+    run: () => {
+      const essay = '爷爷的手很粗糙，可是很暖。我把刨花扫成一堆，跳进去。';
+      const base = {
+        paragraphs: [{ index: 0, text: essay, role: '开头', note: '' }],
+        freshWords: [],
+        moves: [{ id: 'm1', name: '招', quote: '爷爷的手很粗糙，可是很暖', why: 'x', tryThis: 'y' }],
+      };
+
+      const goodChallenge = { ...base, challenge: { quote: '我把刨花扫成一堆，跳进去' } };
+      const fabricatedChallenge = { ...base, challenge: { quote: '阳光落在手背上' } };
+      const duplicateChallenge = { ...base, challenge: { quote: '爷爷的手很粗糙，可是很暖' } };
+
+      const passed =
+        isValidAnalysis(goodChallenge, essay) === null &&
+        isValidAnalysis(fabricatedChallenge, essay) !== null &&
+        isValidAnalysis(duplicateChallenge, essay) !== null;
+      return {
+        passed,
+        detail: passed
+          ? '合法 challenge 放行；编造的与重复的均被拒'
+          : `good=${isValidAnalysis(goodChallenge, essay)} dup=${isValidAnalysis(duplicateChallenge, essay)}`,
+      };
+    },
+  },
+  {
+    // 知识库。规范§五要求事实性内容给出处——这条锁住"给得出处"。
+    id: 'kb-001',
+    requiresKey: false,
+    pass: '按年级取学段要求：3-4 与 5-6 各拿到对应学段的卡，且每张卡都带出处与核实状态',
+    run: () => {
+      const low = lookupStandards(4);
+      const high = lookupStandards(6);
+      const hasBand2 = low.some((card) => card.id === 'std-curriculum-band2');
+      const hasBand3 = high.some((card) => card.id === 'std-curriculum-band3');
+      const allCited = [...low, ...high].every(
+        (card) => typeof card.source === 'string' && card.source.length > 0 && typeof card.verified === 'boolean',
+      );
+      const passed = hasBand2 && hasBand3 && allCited && low.length > 0 && high.length > 0;
+      return {
+        passed,
+        detail: passed ? `4 年级 ${low.length} 张、6 年级 ${high.length} 张，均带出处` : `band2=${hasBand2} band3=${hasBand3} cited=${allCited}`,
+      };
+    },
+  },
+  {
+    id: 'kb-002',
+    requiresKey: false,
+    pass: '知识库检索不到时渲染为空字符串（调用方必须能识别"没有依据"，不能拿空串当依据用）',
+    run: () => {
+      const empty = renderStandards(lookupStandards(2));
+      const outOfRange = renderStandards(lookupStandards(9, '学段要求'));
+      const real = renderStandards(lookupStandards(4, '学段要求'));
+      const passed =
+        empty === '' &&
+        outOfRange === '' &&
+        real.includes('出处') &&
+        real.includes('未核对原著');
+      return { passed, detail: passed ? '空结果可识别，非空结果带出处与核实标记' : `empty="${empty}"` };
     },
   },
 ];

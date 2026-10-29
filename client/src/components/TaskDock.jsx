@@ -12,8 +12,14 @@ import { askReader } from '../api.js';
  *
  * 等 7 秒的那一下不做成转圈：按钮变"读者在读…"，并把等待说出来。
  * 真模型首 token 6.3s，藏是藏不住的，不如让它有性格。
+ *
+ * 写完之后的激励分两半，两半都不能省：
+ *   - **鼓励的话**：不写"真棒"这种空夸。这句是真的——他写了一句话，
+ *     并且刚刚有人读完了它。
+ *   - **动态效果**：那句飞进顶栏的作文本，计数当场跳。
+ *     由调用方传 onKeep 进来做，因为动画要用到顶栏那个按钮的位置。
  */
-export default function TaskDock({ move, grade, essayTitle }) {
+export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
   const [text, setText] = useState('');
   const [reply, setReply] = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
@@ -86,10 +92,25 @@ export default function TaskDock({ move, grade, essayTitle }) {
       )}
 
       {reply && (
-        <div className="dock-reply">
-          <span className="dock-reply-label">读者说</span>
-          <p className="dock-reply-text">{reply}</p>
-        </div>
+        <>
+          <p className="dock-cheer">
+            这一句是你自己写出来的。它现在有读者了。
+          </p>
+
+          <div className="dock-reply">
+            <span className="dock-reply-label">读者说</span>
+            <p className="dock-reply-text">{reply}</p>
+          </div>
+
+          <button
+            type="button"
+            className={`dock-keep${kept ? ' is-kept' : ''}`}
+            onClick={() => onKeep?.(text.trim())}
+            disabled={kept}
+          >
+            {kept ? '已经收进作文本了' : '把这一句收进作文本'}
+          </button>
+        </>
       )}
     </section>
   );

@@ -123,6 +123,49 @@
   background: var(--sky);
   border: 2.5px solid var(--ink);
   border-radius: var(--r-md);
+  /* 读者的回应是"掉下来"的：过冲 + 落地，像一张纸条被拍在桌上 */
+  animation: dock-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dock-drop {
+  from { transform: translateY(-14px) rotate(-1.5deg); opacity: 0; }
+  to { transform: translateY(0) rotate(0); opacity: 1; }
+}
+
+/* 鼓励的话。不写"真棒"——空夸一眼就能看出来，
+   这句之所以成立是因为它陈述了一件刚发生的事。 */
+.dock-cheer {
+  margin: 0;
+  font-family: var(--font-round);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.dock-keep {
+  align-self: flex-start;
+  padding: 11px 22px;
+  font-family: var(--font-round);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift);
+  cursor: pointer;
+}
+
+.dock-keep:not(:disabled):active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.dock-keep:disabled {
+  background: var(--sky-2);
+  cursor: default;
+  opacity: 0.8;
 }
 
 .dock-reply-label {
@@ -143,4 +186,10 @@
   line-height: 1.85;
   color: var(--ink);
   white-space: pre-wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock-reply {
+    animation: none;
+  }
 }

@@ -23,6 +23,7 @@ const router = Router();
 const MIN_GRADE = 3;
 const MAX_GRADE = 6;
 const MAX_TITLE = 40;
+const MAX_COLLECTED = 999;
 
 function validateGrade(value) {
   const grade = Number(value);
@@ -30,6 +31,16 @@ function validateGrade(value) {
     throw new ValidationError(`grade 必须是 ${MIN_GRADE}-${MAX_GRADE} 的整数`);
   }
   return grade;
+}
+
+/** 收藏册里已有的招数。支架撤除的依据：册子越厚，这一篇越少直接标好。 */
+function validateCollectedCount(value) {
+  if (value === undefined || value === null) return 0;
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 0 || count > MAX_COLLECTED) {
+    throw new ValidationError(`collectedCount 必须是 0-${MAX_COLLECTED} 的整数`);
+  }
+  return count;
 }
 
 function validateEssay(value) {
@@ -54,6 +65,7 @@ router.post('/', async (req, res) => {
       grade: validateGrade(req.body?.grade),
       essayText: validateEssay(req.body?.essayText),
       title: validateTitle(req.body?.title),
+      collectedCount: validateCollectedCount(req.body?.collectedCount),
     };
 
     const result = await buildAnalysis(request);
@@ -63,6 +75,9 @@ router.post('/', async (req, res) => {
       degraded: result.degraded,
       crisis: result.crisis,
       analysis: result.analysis,
+      // 自纠错用了几轮。1 = 一次通过；2 = 第一次被拒、带原因重试后通过。
+      // 给前端和评测看：这个数字是"agent 真的在自我修正"的证据。
+      attempts: result.attempts,
       // 只在命中危机时出现：前端展示这段固定话术，不展示任何拆解结果
       ...(result.crisis ? { crisisReply: result.crisisReply } : {}),
     });

@@ -55,6 +55,17 @@
   box-shadow: none;
 }
 
+/* 收进一句之后，本子"咚"一下——计数跳动是看得见的反馈 */
+.an-book.is-punched {
+  animation: an-punch 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes an-punch {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.16) rotate(-2deg); }
+  100% { transform: scale(1); }
+}
+
 .an-body {
   flex: 1;
   min-height: 0;
@@ -259,5 +270,9 @@
   .an-loading-bar span {
     animation: none;
     width: 100%;
+  }
+
+  .an-book.is-punched {
+    animation: none;
   }
 }

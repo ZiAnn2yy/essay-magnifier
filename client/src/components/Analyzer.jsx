@@ -6,6 +6,7 @@ import MoveCards from './MoveCards.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
 import { loadBook, addMove } from '../lib/moveBook.js';
+import { flyTextTo, punch } from '../lib/flyTo.js';
 
 /**
  * 主界面：选范文 → 拆解 → 用一招写自己的。
@@ -22,6 +23,7 @@ export default function Analyzer({ grade, onBack }) {
   const [book, setBook] = useState(loadBook);
   const [bookOpen, setBookOpen] = useState(false);
   const dockRef = useRef(null);
+  const bookRef = useRef(null);
 
   const runAnalyze = useCallback(async (picked) => {
     setEssay(picked);
@@ -34,6 +36,8 @@ export default function Analyzer({ grade, onBack }) {
         grade,
         title: picked.title,
         essayText: picked.text,
+        // 支架撤除的依据：册子越厚，这一篇越少直接标好，越多的招让孩子自己找
+        collectedCount: loadBook().length,
       });
       if (data.crisis) {
         setStatus('crisis');
@@ -59,6 +63,27 @@ export default function Analyzer({ grade, onBack }) {
     setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id ?? 'pasted', from: 'essay' }));
   }
 
+  /**
+   * 写完之后的激励：那句从写作坞飞进顶栏的作文本，计数当场跳一下。
+   *
+   * 分两半是有意的——动画是给孩子看的，"收进作文本"这个动作是给孩子做的。
+   * 自动播放的奖励看两次就腻，自己按下去的奖励每次都算数。
+   */
+  function handleKeepOwn(text) {
+    if (text.length === 0) return;
+    flyTextTo(dockRef.current, bookRef.current, text);
+    setBook(
+      addMove({
+        moveId: activeMoveId ?? 'unknown',
+        name: activeMove?.name ?? '自己用的一招',
+        essayId: essay.id ?? 'pasted',
+        from: 'own',
+        mySentence: text,
+      }),
+    );
+    punch(bookRef.current);
+  }
+
   if (!essay) {
     return (
       <main className="an">
@@ -72,6 +97,7 @@ export default function Analyzer({ grade, onBack }) {
 
   const activeMove = analysis?.moves.find((move) => move.id === activeMoveId) ?? null;
   const collectedIds = book.filter((item) => item.from === 'essay').map((item) => item.moveId);
+  const keptOwn = book.some((item) => item.from === 'own' && item.moveId === activeMoveId);
 
   return (
     <main className="an">
@@ -81,6 +107,7 @@ export default function Analyzer({ grade, onBack }) {
         backLabel="换一篇"
         bookCount={book.length}
         onOpenBook={() => setBookOpen(true)}
+        bookRef={bookRef}
       />
 
       <div className="an-body">
@@ -129,7 +156,13 @@ export default function Analyzer({ grade, onBack }) {
 
               {activeMove && (
                 <div ref={dockRef}>
-                  <TaskDock move={activeMove} grade={grade} essayTitle={essay.title} />
+                  <TaskDock
+                    move={activeMove}
+                    grade={grade}
+                    essayTitle={essay.title}
+                    onKeep={handleKeepOwn}
+                    kept={keptOwn}
+                  />
                 </div>
               )}
             </div>
@@ -142,14 +175,14 @@ export default function Analyzer({ grade, onBack }) {
   );
 }
 
-function TopBar({ grade, onBack, backLabel = '← 换年级', bookCount, onOpenBook }) {
+function TopBar({ grade, onBack, backLabel = '← 换年级', bookCount, onOpenBook, bookRef }) {
   return (
     <header className="an-top">
       <button type="button" className="an-back" onClick={onBack}>
         {backLabel}
       </button>
       <span className="an-grade">{grade} 年级</span>
-      <button type="button" className="an-book" onClick={onOpenBook}>
+      <button type="button" className="an-book" onClick={onOpenBook} ref={bookRef}>
         我的册子 · {bookCount}
       </button>
     </header>
