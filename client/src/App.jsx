@@ -5,11 +5,15 @@ import StartScreen from './components/StartScreen.jsx';
 import StageGate from './components/StageGate.jsx';
 import Analyzer from './components/Analyzer.jsx';
 import { checkAccess, unlock } from './api.js';
-import { applyMotion } from './lib/motionPreference.js';
 
-// 在模块加载时就定好动效状态，不等首帧——
-// 等 useEffect 再切 class，第一帧会先按"全开"画一帧再跳成静态，肉眼能看见闪一下。
-applyMotion();
+// 动效常开，不跟随系统的"减少动态效果"偏好。
+// 用户 2026-10-29 明确要求：动效是这个产品的内容（落贴纸、发牌、那句飞进
+// 作文本全是反馈本身），不是装饰，所以不能因为系统设置就整体关掉。
+// 曾做过一个听系统的开关，但那个开关在"只是顺手关掉 Windows 动画效果"的
+// 机器上会让产品看起来是坏的——用户实际遇到的就是这个。
+// 各处的 html.motion-off 规则保留着，作为无障碍的退路：
+// 真需要的时候在 <html> 上加一个 class 就能整体静音，不必回去改每一处。
+document.documentElement.classList.add('motion-on');
 
 /**
  * 范文放大镜。

@@ -110,9 +110,10 @@
 .start-marquee-track {
   display: flex;
   width: max-content;
-  /* 24 秒一轮：38 秒那版慢到看不出在动，用户专门回来要求"动态的循环"。
-     再快就成跑马灯噪音了，这个速度是"看得见在走、又不打扰阅读"的档。 */
-  animation: start-roll 24s linear infinite;
+  /* 34 秒一轮。用户两次反馈：38 秒那版慢到看不出在动，24 秒又偏快。
+     34s 是"看得见在走、又不打扰读字幕"的中间档，对应约 50px/s——
+     正常阅读速度是每秒五到七个字，这个速度允许人读完一句。 */
+  animation: start-roll 34s linear infinite;
   will-change: transform;
 }
 
@@ -195,13 +196,6 @@
 @keyframes start-breathe {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-4px) scale(1.02); }
-}
-
-.start-foot p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--ink-soft);
 }
 
 /* 窄屏：放大镜缩到底下来，别和标题抢那点宽度 */
