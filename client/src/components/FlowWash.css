@@ -2,15 +2,26 @@
    低不透明度 + 长周期：看得见"在动"，说不上"那是什么"——
    背景层该有的分寸。
 
-   动的是 background-position，不是 transform：早先版本写 inset:-30%
-   让元素本身伸出容器，结果把 .start 撑出两条滚动条
-   （overflow-y:auto 会让 overflow-x 一并算成 auto）。
-   位移背景不改变盒模型，没有这个副作用。 */
+   动的是 transform，不是 background-position：后者每帧重绘，
+   规范（oil-ui/references/motion.md）明确要求连续播放的动画只动变换和透明度。
+
+   伸出去的部分由本元素自己的 overflow:hidden 收住。
+   早先版本写 inset:-30% 让元素本身超出容器，结果把 .start 撑出两条滚动条
+   （overflow-y:auto 会让 overflow-x 一并算成 auto）——那是把裁剪责任
+   推给父级，而父级恰好是个滚动容器。 */
 .flow-wash {
   position: absolute;
   inset: 0;
   z-index: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.flow-wash::before {
+  content: '';
+  position: absolute;
+  /* 比容器宽，才移得出长度；超出的部分被上面的 overflow:hidden 裁掉 */
+  inset: -10% -60%;
   background: linear-gradient(
     102deg,
     transparent 40%,
@@ -18,16 +29,15 @@
     rgba(255, 210, 63, 0.16) 54%,
     transparent 60%
   );
-  background-size: 260% 100%;
-  background-repeat: no-repeat;
   animation: flow-wash 16s ease-in-out infinite;
+  will-change: transform;
 }
 
 @keyframes flow-wash {
-  0%, 100% { background-position: 0% 0; }
-  50% { background-position: 100% 0; }
+  0%, 100% { transform: translateX(-18%); }
+  50% { transform: translateX(18%); }
 }
 
-html.motion-off .flow-wash {
+html.motion-off .flow-wash::before {
   animation: none;
 }

@@ -51,7 +51,8 @@
 }
 
 /* 入场：三行字错开弹进来，不是整块同时淡入。
-   同时淡入是"页面加载了"，错开弹进来是"开始了"。 */
+   同时淡入是"页面加载了"，错开弹进来是"开始了"。
+   间隔取 70ms——规范（motion.md）要求 40-80ms，我原先写 90/100ms 超了。 */
 .start-kicker,
 .start-title,
 .start-lead {
@@ -59,8 +60,8 @@
 }
 
 .start-kicker { animation-delay: 0.05s; }
-.start-title { animation-delay: 0.14s; }
-.start-lead { animation-delay: 0.24s; }
+.start-title { animation-delay: 0.12s; }
+.start-lead { animation-delay: 0.19s; }
 
 @keyframes start-pop {
   from { transform: translateY(16px) scale(0.94); opacity: 0; }
