@@ -1,8 +1,11 @@
 /* ==========================================================================
-   设计令牌 · 方向 2「作品胶卷」
+   设计令牌
    --------------------------------------------------------------------------
-   这套值是 oil-ui 三方向对比里选定的，不再凭感觉改。改任何颜色/字号前，
-   先确认它对应下面哪一条令牌，不要新增魔法数字。
+   这套色板与字体是 oil-ui 三方向对比里由用户选定的（原「作品胶卷」方向），
+   2026-10-29 产品转向「范文放大镜」后**继续作为锁定品牌资产沿用**：
+   调性五刻度（喧闹/偏粗粝/中密/重/活泼）已由用户实测证据锁定，不再重开。
+   新方向的差异只在骨架、主视觉与核心交互上展开，不重开配色字体。
+   改任何颜色/字号前，先确认它对应下面哪条令牌，不要新增魔法数字。
    ========================================================================== */
 
 :root {
@@ -40,6 +43,11 @@
      它必须大到能单独撑住一块白幕，小一寸银幕就空了。 */
   --fs-sentence: clamp(30px, 6.2vw, 66px);
 
+  /* 范文正文的阅读级字号。--fs-sentence 是"一句话当 Hero"的尺寸（30-66px），
+     拿来看一篇 400 字的范文会一屏只能看两句。范文要能一口气读下去，
+     所以单开一档，并且以令牌形式存在——不散落魔法数字。 */
+  --fs-essay: clamp(15px, 1.35vw, 18px);
+
   /* 中文圆体。本机实测（.oil-ui/.../14、15 号截图）：
      - 幼圆是唯一可用的圆体，但只有 regular 一档，700 是伪粗，撑不起主角
      - 微软雅黑 Bold 有真粗，但笔画太粗会把后面的黄色荧光笔压没
@@ -49,6 +57,47 @@
      否则会退到微软雅黑——那时要把描边降到 0.4px，不然太厚。 */
   --font-round: 'YouYuan', '幼圆', 'Yuanti SC', 'STYuanti', 'Microsoft YaHei', sans-serif;
   --fs-frame: clamp(11px, 1.4vw, 13px);
+}
+
+/* 启动与断连的极简态。这不是产品的脸，是服务员还没到位时的那句话 */
+.boot {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.boot-title {
+  margin: 0;
+  font-family: var(--font-round);
+  font-size: 22px;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.boot-hint {
+  margin: 0;
+  max-width: 26em;
+  line-height: 1.8;
+}
+
+.boot-retry {
+  margin-top: 6px;
+  padding: 9px 20px;
+  font-family: var(--font-round);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--orange);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift);
+  cursor: pointer;
 }
 
 /* 自托管 Fredoka（latin 子集，可变字重 300-700，29KB）。
