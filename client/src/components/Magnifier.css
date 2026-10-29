@@ -1,0 +1,37 @@
+.magnifier {
+  width: clamp(120px, 17vw, 210px);
+  height: auto;
+  flex: none;
+  overflow: visible;
+  /* 慢慢浮：不是均匀平移，是带一点摇曳，像拿在手里 */
+  animation: magnifier-float 5.5s ease-in-out infinite;
+}
+
+.magnifier-shadow {
+  fill: var(--ink);
+  opacity: 0.16;
+}
+
+/* 光扫过镜面。大部分时间是停的，扫起来很快——
+   一直扫会变成骚扰，停着又忘了它活着 */
+.magnifier-shine {
+  fill: rgba(255, 255, 255, 0.85);
+  animation: magnifier-sweep 4.5s ease-in-out infinite;
+}
+
+@keyframes magnifier-float {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-14px) rotate(2deg); }
+}
+
+@keyframes magnifier-sweep {
+  0%, 55% { transform: translateX(0); }
+  85%, 100% { transform: translateX(210px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magnifier,
+  .magnifier-shine {
+    animation: none;
+  }
+}

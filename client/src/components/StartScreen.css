@@ -1,4 +1,5 @@
 .start {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -12,7 +13,9 @@
 }
 
 .start-inner {
-  width: min(720px, 100%);
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
   /* flex 列里的子项同样要允许被压缩，否则 max-content 会再次穿透 */
   min-width: 0;
   display: flex;
@@ -20,6 +23,44 @@
   align-items: center;
   gap: 26px;
   text-align: center;
+}
+
+/* 标题与放大镜并置。放大镜压住标题右侧一点——叠压才出纵深，
+   各站一格那是后台卡片网格。 */
+.start-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 3vw, 34px);
+  width: 100%;
+}
+
+.start-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.start-magnifier {
+  margin-left: clamp(-30px, -2vw, -6px);
+}
+
+/* 入场：三行字错开弹进来，不是整块同时淡入。
+   同时淡入是"页面加载了"，错开弹进来是"开始了"。 */
+.start-kicker,
+.start-title,
+.start-lead {
+  animation: start-pop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.start-kicker { animation-delay: 0.05s; }
+.start-title { animation-delay: 0.14s; }
+.start-lead { animation-delay: 0.24s; }
+
+@keyframes start-pop {
+  from { transform: translateY(16px) scale(0.94); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .start-kicker {
@@ -33,17 +74,17 @@
 .start-title {
   margin: 0;
   font-family: var(--font-round);
-  font-size: clamp(46px, 9vw, 78px);
+  font-size: clamp(42px, 7.6vw, 72px);
   line-height: 1;
   color: var(--ink);
-  /* 标题是这一屏唯一的主角，描边给足，让它压得住天蓝底 */
+  /* 标题是这一屏的主角，描边给足，让它压得住天蓝底 */
   -webkit-text-stroke: 1.2px currentColor;
   text-shadow: 5px 5px 0 var(--yellow);
 }
 
 .start-lead {
   margin: 14px 0 0;
-  font-size: clamp(15px, 2vw, 19px);
+  font-size: clamp(15px, 1.9vw, 19px);
   line-height: 1.9;
   color: var(--ink-soft);
 }
@@ -58,6 +99,7 @@
   background: var(--white);
   /* 微微歪一点：纸上贴的东西没有正着的 */
   transform: rotate(-0.5deg);
+  animation: start-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.34s both;
 }
 
 .start-marquee-track {
@@ -105,11 +147,13 @@
   border-radius: var(--r-lg);
   box-shadow: 0 8px 0 var(--ink);
   cursor: pointer;
-  animation: start-breathe 2.4s ease-in-out infinite;
+  animation:
+    start-breathe 2.4s ease-in-out 0.9s infinite,
+    start-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
 }
 
 .start-go-text {
-  font-size: clamp(24px, 4vw, 32px);
+  font-size: clamp(24px, 3.6vw, 32px);
   font-weight: 700;
   color: var(--white);
   -webkit-text-stroke: 0.7px currentColor;
@@ -119,16 +163,23 @@
 .start-go-arrow {
   font-size: 22px;
   color: var(--white);
+  /* 箭头自己往外蹦：按钮在呼吸，箭头在指路，两件事不要抢同一个动作 */
+  animation: start-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes start-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
 }
 
 .start-go:hover {
   animation-play-state: paused;
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.03);
 }
 
 .start-go:active {
   /* 按下去真的沉到底：反馈要发生在手上，不是只在眼里 */
-  transform: translateY(8px);
+  transform: translateY(8px) scale(1);
   box-shadow: 0 0 0 var(--ink);
   animation: none;
 }
@@ -145,9 +196,31 @@
   color: var(--ink-soft);
 }
 
+/* 窄屏：放大镜缩到底下来，别和标题抢那点宽度 */
+@media (max-width: 640px) {
+  .start-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .start-titles {
+    align-items: center;
+    text-align: center;
+  }
+
+  .start-magnifier {
+    width: 104px;
+    margin-left: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .start-marquee-track,
-  .start-go {
+  .start-kicker,
+  .start-title,
+  .start-lead,
+  .start-marquee,
+  .start-go,
+  .start-go-arrow {
     animation: none;
   }
 }

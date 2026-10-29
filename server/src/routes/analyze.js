@@ -78,6 +78,9 @@ router.post('/', async (req, res) => {
       // 自纠错用了几轮。1 = 一次通过；2 = 第一次被拒、带原因重试后通过。
       // 给前端和评测看：这个数字是"agent 真的在自我修正"的证据。
       attempts: result.attempts,
+      // 这次拆解照的是什么依据。前端必须显示它——智能体不能只把活干完，
+      // 还要让人看见它是照什么干的（规范§五 + 评分框架的知识库用途）。
+      basis: result.basis,
       // 只在命中危机时出现：前端展示这段固定话术，不展示任何拆解结果
       ...(result.crisis ? { crisisReply: result.crisisReply } : {}),
     });

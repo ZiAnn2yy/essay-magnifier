@@ -1,0 +1,55 @@
+/* 铺满视口的一层贴纸。absolute + inset:0 不参与布局计算，
+   所以再多的贴纸也不会把文档撑宽（那个坑见 StartScreen.css 的注释）。 */
+.scatter {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.scatter-item {
+  position: absolute;
+  /* 贴纸以自身左上角定位，再用 translate 把自己挪到锚点中心并转一个角度 */
+  padding: 7px 14px;
+  font-family: var(--font-round);
+  font-size: clamp(12px, 1.1vw, 15px);
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--lift-sm);
+  transform: translate(-50%, -50%) rotate(var(--rot));
+  animation: scatter-bob var(--dur) ease-in-out var(--delay) infinite;
+}
+
+.tint-yellow { background: var(--yellow); }
+.tint-pink { background: var(--pink); }
+.tint-orange { background: var(--orange); color: var(--white); }
+
+/* 各自漂：错开周期和相位，六张贴纸同时上下但不同步，
+   同步了就成了机器，不像随手丢在桌上的纸 */
+@keyframes scatter-bob {
+  0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(0); }
+  50% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(-9px); }
+}
+
+/* 窄屏只留左边一列：右边那几张在 390px 下会被裁得很难看，
+   而且小屏幕上贴纸太密会变成噪音 */
+@media (max-width: 900px) {
+  .is-wide-only {
+    display: none;
+  }
+
+  .scatter-item {
+    font-size: 11px;
+    padding: 5px 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scatter-item {
+    animation: none;
+  }
+}

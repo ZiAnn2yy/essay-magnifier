@@ -1,4 +1,6 @@
 import './StartScreen.css';
+import Magnifier from './Magnifier.jsx';
+import StickerLayer from './StickerLayer.jsx';
 import { ESSAYS } from '../data/essays.js';
 
 /**
@@ -8,8 +10,13 @@ import { ESSAYS } from '../data/essays.js';
  * 表单或者一篇要读的说明，他就认定"这是作业"。一屏只有一个大按钮，
  * 按下去才进入选择——这是游戏的节拍，不是表单的节拍。
  *
- * 跑马灯里滚的是真范文里的句子，不是装饰文案：让它第一眼就知道
- * 这个东西里面装的是作文，而且是可以被拆开的作文。
+ * 这一屏要过儿童设计的三个自检，缺一个就是又滑回成人审美：
+ *   - **丰盛感**：撒满真实的招式贴纸，屏幕不能大半个空着
+ *   - **反馈**：按下去真的沉到底，不是只换个颜色
+ *   - **惊喜**：放大镜是这一屏的主角，它此前一帧都没出现过——
+ *     一个叫"范文放大镜"的工具，首屏没有放大镜
+ *
+ * 跑马灯里滚的是真范文里的句子，不是装饰文案。
  */
 const MARQUEE = ESSAYS.flatMap((essay) =>
   essay.text
@@ -22,15 +29,20 @@ const MARQUEE = ESSAYS.flatMap((essay) =>
 export default function StartScreen({ onStart }) {
   return (
     <main className="start">
+      <StickerLayer />
+
       <div className="start-inner">
         <header className="start-head">
-          <p className="start-kicker">语文写作</p>
-          <h1 className="start-title">范文放大镜</h1>
-          <p className="start-lead">
-            拆开一篇范文，看看它是怎么写成的。
-            <br />
-            学一招，写你自己的。
-          </p>
+          <div className="start-titles">
+            <p className="start-kicker">语文写作</p>
+            <h1 className="start-title">范文放大镜</h1>
+            <p className="start-lead">
+              拆开一篇范文，看看它是怎么写成的。
+              <br />
+              学一招，写你自己的。
+            </p>
+          </div>
+          <Magnifier className="start-magnifier" />
         </header>
 
         <div className="start-marquee" aria-hidden="true">

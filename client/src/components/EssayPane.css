@@ -33,10 +33,36 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 18px 20px;
+  padding: 16px 18px 20px 30px;
   font-size: var(--fs-essay);
   line-height: 2;
   color: var(--ink);
+  /* 作文本左边那道红竖线。一行 CSS，但这一块立刻从"白板"变成"纸上"——
+     产品全程都在跟"一篇作文"打交道，容器却长得像后台文本框，说不过去。 */
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    transparent 18px,
+    var(--pink) 18px,
+    var(--pink) 21px,
+    transparent 21px
+  );
+  background-repeat: no-repeat;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
+}
+
+.essay-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.essay-body::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+.essay-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .essay-para {

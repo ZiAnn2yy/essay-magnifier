@@ -16,15 +16,32 @@
 .moves-list {
   list-style: none;
   margin: 0;
-  padding: 0 4px 4px 0;
+  padding: 6px 4px 10px 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  /* 负间距让牌互相压着：一沓纸，不是一排并列的卡片 */
+  gap: 0;
   overflow-y: auto;
   min-height: 0;
   flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
 }
 
+.moves-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.moves-list::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border-radius: 999px;
+}
+
+.moves-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 外层管静态姿态：扇形旋转 + 互相压着 + 点哪张转正 */
 .move {
   background: var(--white);
   border: 3px solid var(--ink);
@@ -32,13 +49,38 @@
   border-left-color: var(--move-accent);
   border-radius: var(--r-md);
   box-shadow: var(--lift);
-  padding: 13px 15px 14px;
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: rotate(var(--fan));
+  transition:
+    transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.24s ease;
+  cursor: pointer;
+}
+
+/* 压着上一张的底边——露出来的那一截是"这里还有一张"的暗示 */
+.move + .move {
+  margin-top: -14px;
+}
+
+.move:hover {
+  transform: rotate(var(--fan)) translateY(-3px);
 }
 
 .move.is-active {
-  transform: rotate(-0.6deg) scale(1.01);
+  transform: rotate(0deg) scale(1.02);
   box-shadow: var(--lift-lg);
+}
+
+/* 内层管进场：发牌式依次落下来。
+   和静态旋转分层，否则 animation 的填充态会压过 transition 的静止态。 */
+.move-deal {
+  padding: 13px 15px 14px;
+  animation: move-deal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(0.06s + var(--i) * 0.13s);
+}
+
+@keyframes move-deal {
+  from { transform: translateY(26px) scale(0.96); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .move-head {
@@ -126,6 +168,11 @@
   border-radius: var(--r-md);
   box-shadow: var(--lift-sm);
   cursor: pointer;
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.move-use:hover {
+  transform: translateY(-2px);
 }
 
 .move-use:active {
@@ -144,6 +191,11 @@
   border-radius: var(--r-md);
   box-shadow: var(--lift-sm);
   cursor: pointer;
+  transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.move-collect:not(:disabled):hover {
+  transform: translateY(-2px);
 }
 
 .move-collect:disabled {
@@ -174,7 +226,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .move {
+  .move,
+  .move-use,
+  .move-collect {
     transition: none;
+  }
+
+  .move-deal {
+    animation: none;
   }
 }

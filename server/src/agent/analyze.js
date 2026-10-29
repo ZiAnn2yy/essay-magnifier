@@ -239,7 +239,8 @@ export async function buildAnalysis(request) {
 
   // 第一步：检索。按年级取学段要求与教学法依据，作为生成的上下文。
   // 取不到就传空，prompt 会明确告诉模型"本次没有可依据的资料，不要提"。
-  const standardsText = renderStandards(lookupStandards(request.grade));
+  const standards = lookupStandards(request.grade);
+  const standardsText = renderStandards(standards);
 
   if (config.llmReady) {
     let retryReason = '';
@@ -250,7 +251,16 @@ export async function buildAnalysis(request) {
         if (attempt > 1) {
           logger.info('拆解自纠错成功', { attempt });
         }
-        return { crisis: false, analysis, degraded: false, attempts: attempt };
+        return {
+          crisis: false,
+          analysis,
+          degraded: false,
+          attempts: attempt,
+          // 这次拆解照的是什么依据。**必须回给前端并显示出来**——
+          // 智能体不能只把活干完，还要让人看见它是照什么干的（规范§五：
+          // 事实性内容必须给出处；也是评分框架里"知识库在 agent 设计中的用途"）。
+          basis: describeBasis(standards),
+        };
       } catch (error) {
         // 降级不是异常，重试更不是：记下来，把具体原因喂给下一轮
         retryReason = error.message;
@@ -264,5 +274,30 @@ export async function buildAnalysis(request) {
     analysis: localAnalyze(request),
     degraded: true,
     attempts: 0,
+    // 降级时没有模型判断，也就没有"照什么拆"可言——明说没有依据，
+    // 不拿规则切段冒充有依据的拆解
+    basis: [],
+  };
+}
+
+/** 把检索到的依据压成一句人能懂的话 + 可展示的短标签 */
+function describeBasis(standards) {
+  const curriculum = standards.find((card) => card.topic === '学段要求');
+  const methods = standards.filter((card) => card.topic === '教学法依据');
+
+  const parts = [];
+  if (curriculum) {
+    // "第二学段（3-4 年级）" 这种说法对家长和孩子都太术语，
+    // 直接用年级说：三四年级
+    const grades = curriculum.grades.join('、');
+    parts.push(`照着语文课标对${grades}年级的要求拆的`);
+  }
+  if (methods.length > 0) {
+    parts.push(`参考了 ${methods.length} 条写作教学方法`);
+  }
+  return {
+    summary: parts.join('，') || '这次没有检索到可依据的资料',
+    curriculum: curriculum ? { grades: curriculum.grades, source: curriculum.source, verified: curriculum.verified } : null,
+    methodCount: methods.length,
   };
 }

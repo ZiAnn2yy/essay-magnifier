@@ -5,6 +5,7 @@ import EssayPane from './EssayPane.jsx';
 import MoveCards from './MoveCards.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
+import { ESSAYS } from '../data/essays.js';
 import { loadBook, addMove } from '../lib/moveBook.js';
 import { flyTextTo, punch } from '../lib/flyTo.js';
 
@@ -17,6 +18,8 @@ import { flyTextTo, punch } from '../lib/flyTo.js';
 export default function Analyzer({ grade, onBack }) {
   const [essay, setEssay] = useState(null);
   const [analysis, setAnalysis] = useState(null);
+  const [basis, setBasis] = useState(null);
+  const [attempts, setAttempts] = useState(0);
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [error, setError] = useState('');
   const [activeMoveId, setActiveMoveId] = useState(null);
@@ -44,12 +47,24 @@ export default function Analyzer({ grade, onBack }) {
         return;
       }
       setAnalysis(data.analysis);
+      setBasis(data.basis);
+      setAttempts(data.attempts);
       setStatus('done');
     } catch (submitted) {
       setError(submitted.message);
       setStatus('error');
     }
   }, [grade]);
+
+  // 深链 ?essay=<id> 直接开到拆解，跳过选范文那一步。
+  // 录演示视频时每个 take 都从点范文开始太浪费；也让我能在无头浏览器里
+  // 直接截到拆解后的界面（没有这个深链，就得先点两下才能到）。
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('essay');
+    if (!id) return;
+    const picked = ESSAYS.find((item) => item.id === id);
+    if (picked) runAnalyze(picked);
+  }, [runAnalyze]);
 
   function handleUseMove(move) {
     setActiveMoveId(move.id);
@@ -154,6 +169,11 @@ export default function Analyzer({ grade, onBack }) {
                 collected={collectedIds}
               />
 
+              {/* 智能体现身的地方：它照什么拆的、核对结果如何。
+                  不显示这段，前面那些能力就全藏在后台——孩子和评委
+                  都只知道"结果出来了"，不知道"是谁照什么干出来的"。 */}
+              <BasisNote basis={basis} attempts={attempts} degraded={status === 'done' && !analysis.moves.length} />
+
               {activeMove && (
                 <div ref={dockRef}>
                   <TaskDock
@@ -218,6 +238,38 @@ function Analyzing({ essayTitle }) {
         <span />
       </div>
     </div>
+  );
+}
+
+/**
+ * 智能体的"自报家门"。
+ *
+ * 这是把后台的能力搬到前台的那一条。没有它，前面所有的东西
+ * （按年级检索课标、逐字核对引用、不对就自己改）都只是实现细节，
+ * 孩子和评委看到的结果和"套了个 prompt 的工具"没有区别。
+ *
+ * 两条都写得像人话，因为它的读者首先是孩子和家长；
+ * 但同时每一条都是可核实的真话——不是营销话术。
+ */
+function BasisNote({ basis, attempts, degraded }) {
+  if (!basis) return null;
+
+  const corrected = attempts > 1;
+
+  return (
+    <aside className="basis">
+      <p className="basis-title">这一篇是照着什么拆的</p>
+      <p className="basis-line">{basis.summary}</p>
+      <p className="basis-line basis-check">
+        {degraded ? (
+          <>这次没能拆出招式，上面只有原文和分段</>
+        ) : corrected ? (
+          <>有一处引用的原句对不上，它自己改了一次才对上</>
+        ) : (
+          <>每一处引用的原句，都逐字核对过，是这篇范文里真有的</>
+        )}
+      </p>
+    </aside>
   );
 }
 
