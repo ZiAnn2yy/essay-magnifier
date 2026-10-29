@@ -5,14 +5,19 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { errorResponse } from './lib/errors.js';
 import { logger } from './lib/logger.js';
-import chatRouter from './routes/chat.js';
-import learnerRouter from './routes/learner.js';
 import storyboardRouter from './routes/storyboard.js';
+import analyzeRouter from './routes/analyze.js';
+import readerRouter from './routes/reader.js';
+import accessRouter from './routes/access.js';
+import { requireAccess } from './auth/access-code.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-/** 接口契约版本。能力协商见 docs/contract.md；v2 新增绘本分镜端点 */
-const CONTRACT_VERSION = 'v2';
+/**
+ * 接口契约版本。能力协商见 docs/contract.md。
+ * v3 新增范文拆解端点，同时 grade 收窄为 3-6（1-2 年级不再支持）。
+ */
+const CONTRACT_VERSION = 'v3';
 
 export function createApp() {
   const app = express();
@@ -30,9 +35,21 @@ export function createApp() {
     });
   });
 
-  app.use('/api/chat', chatRouter);
-  app.use('/api/learner', learnerRouter);
+  // 访问门槛：挡 /api 下的业务端点。/api/health 与 /api/access 必须放行，
+  // 否则前端永远问不到"要不要密码"，评委会被锁在门外。
+  // 静态页面不在这里挡——页面由前端按 /api/access 的结果显示密码页。
+  app.use('/api', (req, res, next) => {
+    if (req.path === '/health' || req.path === '/access') {
+      next();
+      return;
+    }
+    requireAccess(req, res, next);
+  });
+
   app.use('/api/v2/storyboard', storyboardRouter);
+  app.use('/api/v3/analyze', analyzeRouter);
+  app.use('/api/v3/reader', readerRouter);
+  app.use('/api/access', accessRouter);
 
   // ===== 生产模式：托管前端构建产物 =====
   // 与 dogdog 同构：单个服务同时提供 API 与页面，避免再开一个端口和一层 CORS

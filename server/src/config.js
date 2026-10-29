@@ -42,4 +42,13 @@ export const config = {
 
   // 规范§四.2：用户输入必须限长，超长直接拒绝而不是截断了事
   maxInputLength: readInt('MAX_INPUT_LENGTH', 500),
+
+  // 范文正文的上限。一篇 3-6 年级记叙文 400-600 字，留到 2000 是给"粘贴一篇长文"用的。
+  // 与 maxInputLength 分开：后者管对话轮次（要短），前者管整篇文本（要长）。
+  maxEssayLength: readInt('MAX_ESSAY_LENGTH', 2000),
+
+  // 访问门槛：设了就要求输入这个密码才能用（页面和 API 一起挡）。
+  // 留空 = 不设门槛，本地开发和录屏走这条。
+  // 值只从环境变量来，**不写进代码**——提交历史属于作品内容，见规范§〇红线一。
+  accessCode: readStr('ACCESS_CODE'),
 };

@@ -35,18 +35,15 @@ async function callOnce({ messages, tools, toolChoice, maxTokens = DEFAULT_MAX_T
   };
 
   if (Array.isArray(tools) && tools.length > 0) {
-    body.tools = tools.map((tool) => ({
-      type: 'function',
-      function: {
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters,
-      },
-    }));
+    // tools 由调用方按线上协议形状传入（唯一整形点是 agent/tools.js 的 toWireFormat）。
+    // 这里不再二次包装：曾在这里又 map 一层、读 tool.name，而传入的已经是
+    // {type:'function', function:{...}}，于是 name 变成 undefined，
+    // 上游直接报 "function name is invalid"。这个 bug 由评测集抓出来——
+    // 之前没有 .env，llmReady 恒为 false，降级路径把它遮住了。
+    body.tools = tools;
 
-    // 注：绘本导演**不走**这条路。导演改为 JSON 文本往返 + 稳健解析，
-    // 因为当前推理模型的 thinking 模式不兼容 tool_choice: specified。
-    // 见 agent/storyboard.js 顶部说明。这里保留给 kernel 用。
+    // 注：推理模型的 thinking 模式不兼容 tool_choice: specified，强制工具调用不可用。
+    // 见 agent/kernel.js 的调用处。这里保留给需要它的调用方。
     if (toolChoice) {
       body.tool_choice = { type: 'function', function: { name: toolChoice } };
     }
