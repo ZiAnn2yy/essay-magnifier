@@ -110,10 +110,11 @@
 .start-marquee-track {
   display: flex;
   width: max-content;
-  /* 34 秒一轮。用户两次反馈：38 秒那版慢到看不出在动，24 秒又偏快。
-     34s 是"看得见在走、又不打扰读字幕"的中间档，对应约 50px/s——
-     正常阅读速度是每秒五到七个字，这个速度允许人读完一句。 */
-  animation: start-roll 34s linear infinite;
+  /* 40 秒一轮，用户 2026-10-29 指定。
+     调过的档位：38s（看不出在动）→ 24s（一句没读完就过去）→ 34s → 29s → 40s。
+     约 43px/s，比正常阅读速度（每秒五到七个字）略慢，
+     所以字幕是"慢慢经过"，不是"被人追着跑"。 */
+  animation: start-roll 40s linear infinite;
   will-change: transform;
 }
 
