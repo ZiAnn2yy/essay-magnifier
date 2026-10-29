@@ -1,10 +1,17 @@
 .gate {
+  position: relative;
   min-height: 100vh;
+  /* 同 StartScreen：两个轴都显式写死，别让某一层绝对定位的元素
+     悄悄变成一条横向滚动条 */
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 32px 20px 40px;
 }
 
+/* 内容必须在光带之上，否则那层渐变会盖在按钮上 */
 .gate-inner {
+  position: relative;
+  z-index: 1;
   width: min(760px, 100%);
   margin: 0 auto;
   display: flex;

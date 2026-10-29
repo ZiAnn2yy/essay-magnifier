@@ -9,6 +9,10 @@
      症状是页面出现横向滚动条、首屏只剩一条字幕的尾巴。 */
   grid-template-columns: minmax(0, 1fr);
   padding: 28px 20px 36px;
+  /* 两个轴都显式写死。只写 overflow-y:auto 的话，overflow-x 会被算成 auto，
+     任何一层伸出容器的绝对定位元素都会变成一条横向滚动条——
+     这个坑今天已经踩过两次（跑马灯撑破 grid、光带伸出 30%）。 */
+  overflow-x: hidden;
   overflow-y: auto;
 }
 

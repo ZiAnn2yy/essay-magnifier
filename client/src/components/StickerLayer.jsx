@@ -1,38 +1,46 @@
 import './StickerLayer.css';
 
 /**
- * 撒在桌面上的招式贴纸。
+ * 持续往下落的招式贴纸。
  *
  * 贴纸上写的是**模型真的拆出来的招式名**（把动作放慢写、用味道开头……），
  * 不是装饰文案——所以这一层既是氛围，也是"这里面到底有什么"的预告。
  *
- * 为什么用绝对定位铺满视口：贴纸要落在内容两边的空白里，
- * 放在内容流里只会把正文挤窄。绝对定位不参与布局计算，
- * 外层 overflow:hidden 保证靠边的贴纸被裁掉而不是把文档撑宽
- * （开始屏已经因为这个坑返工过一次：max-content 的轨道把 grid 撑破）。
+ * 为什么是"落"而不是"撒"：撒在桌上的是背景，落下来的才有流动感。
+ * 用户要的是动态流动，所以这里做成一绺不断往下掉的贴纸：
+ * 每张有不同的横向位置、下落时长和出发时间，看着就像一个个接连落下。
+ *
+ * 透明度刻意压低（0.5 左右）：它们是背景，不是内容。
+ * 压过正文的贴纸是噪音——这正是"丰盛感"和"杂乱"的分界。
  */
 const STICKERS = [
-  { text: '把动作放慢写', x: 5, y: 16, rot: -8, tint: 'yellow', delay: '0s', dur: '4.2s' },
-  { text: '用味道开头', x: 80, y: 12, rot: 7, tint: 'pink', delay: '-1.4s', dur: '5.1s', wideOnly: true },
-  { text: '把冷写进身体里', x: 9, y: 63, rot: -4, tint: 'orange', delay: '-2.6s', dur: '4.7s' },
-  { text: '拿一样东西去比另一样', x: 77, y: 57, rot: 9, tint: 'yellow', delay: '-0.8s', dur: '5.6s', wideOnly: true },
-  { text: '结尾留个味道', x: 13, y: 85, rot: 5, tint: 'pink', delay: '-3.4s', dur: '4.4s' },
-  { text: '把小雨点写得看得见', x: 74, y: 83, rot: -6, tint: 'orange', delay: '-2s', dur: '5.2s', wideOnly: true },
+  { text: '把动作放慢写', x: 6, dur: '11s', delay: '0s', rot: -8 },
+  { text: '用味道开头', x: 18, dur: '13s', delay: '-4.5s', rot: 7 },
+  { text: '把冷写进身体里', x: 31, dur: '9.5s', delay: '-2s', rot: -4 },
+  { text: '拿一样东西去比另一样', x: 44, dur: '14s', delay: '-7s', rot: 9 },
+  { text: '结尾留个味道', x: 57, dur: '10.5s', delay: '-5.5s', rot: 5 },
+  { text: '把小雨点写得看得见', x: 69, dur: '12.5s', delay: '-1.5s', rot: -6 },
+  { text: '用手的感觉写亲人', x: 81, dur: '11.5s', delay: '-8.5s', rot: 4 },
+  { text: '让读者听见声音', x: 92, dur: '13.5s', delay: '-3.5s', rot: -9 },
+  { text: '用一个东西代替形容词', x: 12, dur: '15s', delay: '-10s', rot: 6 },
+  { text: '结尾不说再见', x: 74, dur: '10s', delay: '-6.5s', rot: -5 },
 ];
 
 export default function StickerLayer() {
   return (
     <div className="scatter" aria-hidden="true">
-      {STICKERS.map((sticker) => (
+      {STICKERS.map((sticker, index) => (
         <span
           key={sticker.text}
-          className={`scatter-item tint-${sticker.tint}${sticker.wideOnly ? ' is-wide-only' : ''}`}
+          className={`scatter-item tint-${index % 3 === 0 ? 'yellow' : index % 3 === 1 ? 'pink' : 'orange'}`}
           style={{
             left: `${sticker.x}%`,
-            top: `${sticker.y}%`,
-            '--rot': `${sticker.rot}deg`,
-            '--delay': sticker.delay,
             '--dur': sticker.dur,
+            '--delay': sticker.delay,
+            '--rot': `${sticker.rot}deg`,
+            // 静态落点只在 prefers-reduced-motion 下用：不动的时候
+            // 也得让贴纸待在屏幕上，不能因为关了动画就全部消失
+            '--y': `${12 + (index % 5) * 16}vh`,
           }}
         >
           {sticker.text}

@@ -1,0 +1,35 @@
+/* 一道很缓的光，从左到右扫过整个容器。
+   低不透明度 + 长周期：看得见"在动"，说不上"那是什么"——
+   背景层该有的分寸。
+
+   动的是 background-position，不是 transform：早先版本写 inset:-30%
+   让元素本身伸出容器，结果把 .start 撑出两条滚动条
+   （overflow-y:auto 会让 overflow-x 一并算成 auto）。
+   位移背景不改变盒模型，没有这个副作用。 */
+.flow-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    102deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 210, 63, 0.16) 54%,
+    transparent 60%
+  );
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  animation: flow-wash 16s ease-in-out infinite;
+}
+
+@keyframes flow-wash {
+  0%, 100% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-wash {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import './StartScreen.css';
 import Magnifier from './Magnifier.jsx';
 import StickerLayer from './StickerLayer.jsx';
+import FlowWash from './FlowWash.jsx';
 import { ESSAYS } from '../data/essays.js';
 
 /**
@@ -29,6 +30,7 @@ const MARQUEE = ESSAYS.flatMap((essay) =>
 export default function StartScreen({ onStart }) {
   return (
     <main className="start">
+      <FlowWash />
       <StickerLayer />
 
       <div className="start-inner">

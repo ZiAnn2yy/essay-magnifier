@@ -1,4 +1,5 @@
 import './StageGate.css';
+import FlowWash from './FlowWash.jsx';
 import { BANDS } from '../data/writingBands.js';
 
 /**
@@ -13,6 +14,8 @@ import { BANDS } from '../data/writingBands.js';
 export default function StageGate({ onPick }) {
   return (
     <main className="gate">
+      <FlowWash />
+
       <div className="gate-inner">
         <header className="gate-head">
           <p className="gate-kicker">语文写作 · 范文拆解</p>
