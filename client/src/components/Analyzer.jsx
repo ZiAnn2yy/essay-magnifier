@@ -5,7 +5,7 @@ import EssayPane from './EssayPane.jsx';
 import MoveCards from './MoveCards.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
-import { ESSAYS } from '../data/essays.js';
+import { loadEssaysByGrade } from '../data/essayStore.js';
 import { loadBook, addMove } from '../lib/moveBook.js';
 import { flyTextTo, punch } from '../lib/flyTo.js';
 
@@ -59,12 +59,20 @@ export default function Analyzer({ grade, onBack }) {
   // 深链 ?essay=<id> 直接开到拆解，跳过选范文那一步。
   // 录演示视频时每个 take 都从点范文开始太浪费；也让我能在无头浏览器里
   // 直接截到拆解后的界面（没有这个深链，就得先点两下才能到）。
+  // 从分片里按 id 找，不读合并文件——合并文件只有最初的十篇，
+  // 后来生成的范文会找不到（这个不一致真犯过）。
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('essay');
     if (!id) return;
-    const picked = ESSAYS.find((item) => item.id === id);
-    if (picked) runAnalyze(picked);
-  }, [runAnalyze]);
+    let alive = true;
+    loadEssaysByGrade(grade).then((list) => {
+      const picked = list.find((item) => item.id === id);
+      if (alive && picked) runAnalyze(picked);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [grade, runAnalyze]);
 
   function handleUseMove(move) {
     setActiveMoveId(move.id);

@@ -50,6 +50,9 @@ router.post('/', async (req, res) => {
       degraded: result.degraded,
       crisis: result.crisis,
       reply: result.reply,
+      // 额度耗尽和"没配 Key"是两种故障，前端要能分别对待：
+      // 前者该提示"今天用满了"，后者是配置问题
+      quota: result.quota === true,
     });
   } catch (error) {
     const { status, body } = errorResponse(error);

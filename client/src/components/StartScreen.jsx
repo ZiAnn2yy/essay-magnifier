@@ -2,7 +2,7 @@ import './StartScreen.css';
 import Magnifier from './Magnifier.jsx';
 import StickerLayer from './StickerLayer.jsx';
 import FlowWash from './FlowWash.jsx';
-import { ESSAYS } from '../data/essays.js';
+import { MARQUEE_LINES } from '../data/marqueeLines.js';
 
 /**
  * 第一拍：开始。
@@ -19,14 +19,6 @@ import { ESSAYS } from '../data/essays.js';
  *
  * 跑马灯里滚的是真范文里的句子，不是装饰文案。
  */
-const MARQUEE = ESSAYS.flatMap((essay) =>
-  essay.text
-    .split('\n')
-    .slice(0, 2)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0),
-);
-
 export default function StartScreen({ onStart }) {
   return (
     <main className="start">
@@ -51,7 +43,7 @@ export default function StartScreen({ onStart }) {
           <div className="start-marquee-track">
             {[0, 1].map((copy) => (
               <div className="start-marquee-run" key={copy}>
-                {MARQUEE.map((line) => (
+                {MARQUEE_LINES.map((line) => (
                   <span className="start-marquee-cell" key={line}>
                     {line}
                   </span>

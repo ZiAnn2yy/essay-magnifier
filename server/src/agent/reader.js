@@ -25,6 +25,17 @@ const READER_MAX_TOKENS = 8192;
 const FALLBACK_REPLY =
   '我现在没办法好好读你写的东西（模型没有连上）。你写的这句先留着，晚点再给读者看。';
 
+/** 额度耗尽时的兜底。和"没配 Key"分开说——这两种故障的处置完全不同。 */
+const QUOTA_REPLY =
+  '模型今天的额度用完了，所以我读不了你写的句子。你写的这句先存在这儿，额度回来了再看。';
+
+/** 上游是限流/额度问题时的兜底话术。判据是错误里带 429 或 budget。 */
+function fallbackFor(error) {
+  const message = String(error?.message ?? '');
+  const isQuota = message.includes('429') || /budget|quota|rate limit/i.test(message);
+  return { reply: isQuota ? QUOTA_REPLY : FALLBACK_REPLY, quota: isQuota };
+}
+
 export async function buildReaderReply({ moveName, essayTitle, childText }) {
   const crisis = detectCrisis(childText);
   if (crisis.level === 'crisis') {
@@ -52,8 +63,11 @@ export async function buildReaderReply({ moveName, essayTitle, childText }) {
       throw new Error('读者回应为空');
     } catch (error) {
       logger.warn('LLM 读者回应失败，使用兜底话术', { reason: error.message });
+      const fallback = fallbackFor(error);
+      return { crisis: false, reply: fallback.reply, degraded: true, quota: fallback.quota };
     }
   }
 
-  return { crisis: false, reply: FALLBACK_REPLY, degraded: true };
+  const fallback = fallbackFor(null);
+  return { crisis: false, reply: fallback.reply, degraded: true, quota: false };
 }

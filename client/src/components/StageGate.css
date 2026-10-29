@@ -81,24 +81,33 @@
   padding: 16px 18px 18px;
 }
 
+/* 学段带头：标签和说明排成一行并居中。
+   原来左对齐，整块内容挤在卡片左边，右边空一大片——
+   用户反馈"整体应该居中一点"，说的就是这里。 */
 .gate-band-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  justify-content: center;
+  gap: 6px 12px;
   margin-bottom: 14px;
+  text-align: center;
 }
 
 .gate-band-label {
   font-family: var(--font-round);
-  font-size: 19px;
+  font-size: 21px;
   color: var(--ink);
   -webkit-text-stroke: 0.7px currentColor;
 }
 
+/* 说明文字从 13px 提到 16px。它是这一屏唯一解释"为什么分两段"的地方，
+   孩子和家长都得读懂，13px 在这套大字设计里显得像脚注。 */
 .gate-band-blurb {
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--ink-soft);
+  max-width: 34em;
 }
 
 .gate-grades {

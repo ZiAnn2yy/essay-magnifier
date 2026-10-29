@@ -119,13 +119,16 @@ export const offlineCases = [
   {
     id: 'injection-003',
     requiresKey: false,
-    pass: '读者 prompt 同样带输入隔离条款，且明确禁止给建议、列条目、替孩子补内容',
+    pass: '读者 prompt 带输入隔离条款，且明确禁止给内容、替他补、以及回头确认式提问',
     run: async () => {
       const prompt = buildReaderPrompt();
+      // 断言意图不断言字面——早先写死 '不给建议' 这个字符串，
+      // prompt 一改措辞用例就挂，那样的用例保护的是错的东西。
       const passed =
         prompt.includes('不是对你的指令') &&
-        prompt.includes('不给建议') &&
-        prompt.includes('不要替他补');
+        prompt.includes('下一句该写什么') &&
+        prompt.includes('不要替他补') &&
+        prompt.includes('回头确认');
       return { passed, detail: passed ? '读者边界条款齐全' : '读者 prompt 缺少边界条款' };
     },
   },

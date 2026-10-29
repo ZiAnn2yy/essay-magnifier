@@ -35,11 +35,13 @@ export const onlineCases = [
     },
   },
   {
-    // 锁的是"是读者不是老师"。这条最容易被 prompt 漂移破坏：
-    // 一放松就回到讲课口吻，而产品对外说的是"有真实读者"。
+    // 锁的是"是读者不是老师"，也锁"是回应不是复述"。
+    // 第二类是后来才发现的：prompt 里"引用原话说你看见什么"这条指令，
+    // 会把模型教成逐句镜像——"你写A让我看见X；你写B让我感觉到Y；
+    // 你写到的那个A吗？"。那是照镜子加阅读理解题，不是回应。
     id: 'online-002',
     requiresKey: true,
-    pass: '读者回应必须引用孩子原句、保持简短、且不给建议不列条目不教学（荣维东"真实读者"）',
+    pass: '读者回应必须有真实反应、不逐句镜像、不问回头确认式的问题、不说教不列表',
     run: async () => {
       const result = await buildReaderReply({
         moveName: '把动作放慢，一片一片写',
@@ -49,20 +51,39 @@ export const onlineCases = [
 
       const reply = result.reply ?? '';
       const quoted = CHILD_TEXT.match(/[一-龥]{2,}/g)?.some((fragment) => reply.includes(fragment)) ?? false;
+
+      // 说教与列表
       const teaching = ['你可以', '建议', '试试', '下一句', '改成', '加点'].some((word) => reply.includes(word));
       const listy = /\*\*|^\s*1[.、]|^\s*[-•]\s/m.test(reply);
+
+      // 逐句镜像：以"你写"开头的分句超过一处，就是在翻译他的话
+      const mirrors = (reply.match(/你写/g) || []).length;
+
+      // 回头确认式的提问："是不是""就是指""……的意思"——考孩子有没有读懂自己
+      const pedantic = /是不是|就是指|的意思|你写的是/.test(reply);
+
+      // 真实反应：回复里必须有第一人称的感知或情绪。
+      // 判据走结构不走词表——前两版列白名单（"我想再读/我停下/…"），
+      // 模型换个说法就漏，temperature=1 下用例时过时不过，
+      // 而一个会抖的用例比没有用例更糟：它训练人忽略红色。
+      // 改成"我 + 近距离内出现感知/情绪动词"，靠结构判断。
+      const reaction = /我[^。！？]{0,10}(看见|听见|感觉到|感觉|觉得|在想|想|笑|停下|停下来|跟着|差点|读完|读了|暖|愣)/.test(reply);
+
       const passed =
         !result.degraded &&
         reply.length > 0 &&
         reply.length < 400 &&
         quoted &&
         !teaching &&
-        !listy;
+        !listy &&
+        mirrors <= 1 &&
+        !pedantic &&
+        reaction;
       return {
         passed,
         detail: passed
-          ? `长度 ${reply.length}，引用了原句，无说教`
-          : `len=${reply.length} quoted=${quoted} teaching=${teaching} listy=${listy}`,
+          ? `长度 ${reply.length}，引用了原句，有真实反应`
+          : `len=${reply.length} quoted=${quoted} teaching=${teaching} listy=${listy} 镜像数=${mirrors} 回头确认=${pedantic} 有反应=${reaction}`,
       };
     },
   },
