@@ -27,9 +27,40 @@ function write(entries) {
   }
 }
 
+/**
+ * 册子条目的唯一键。
+ *
+ * **必须带 essayId。** 招式的 id 是 `m1/m2/m3`，按次拆解生成，不是全局唯一的——
+ * 每一篇范文的第一招都叫 m1。只比 moveId 的话，孩子在任何一篇里收过 m1，
+ * 每一篇的 m1 都会显示"已收进册子"；写过一句的那招更糟，
+ * 别的篇目同一个序号会显示"已经收进作文本了"且按钮禁用，他新写的这句存不进去。
+ *
+ * 2026-10-30 真犯过：存储用的是这个复合键（对的），读回来时只 map 了 moveId（错的），
+ * 于是册子里明明没有这一招，卡片上写着已收。用户在演示时抓到的。
+ *
+ * @param {{essayId: string, moveId: string, from: string}} entry
+ * @returns {string}
+ */
+export function entryKey(entry) {
+  return `${entry.essayId}::${entry.moveId}::${entry.from}`;
+}
+
+/**
+ * 册子里有没有这一条——同一篇、同一招、同一种来源，三者全对上才算。
+ *
+ * @param {Array} entries 册子条目，传 loadBook() 的结果
+ * @param {{essayId: string, moveId: string, from: string}} wanted
+ * @returns {boolean}
+ */
+export function hasEntry(entries, wanted) {
+  if (!wanted?.essayId || !wanted?.moveId || !wanted?.from) return false;
+  const key = entryKey(wanted);
+  return (Array.isArray(entries) ? entries : []).some((item) => entryKey(item) === key);
+}
+
 /** 同一招在同一篇里只收一次——重复收藏会让"攒了多少"变成假的 */
 function keyOf(entry) {
-  return `${entry.essayId}::${entry.moveId}::${entry.from}`;
+  return entryKey(entry);
 }
 
 /**

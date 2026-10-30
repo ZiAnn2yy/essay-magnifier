@@ -6,8 +6,21 @@ import MoveCards from './MoveCards.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
 import { loadEssaysByGrade } from '../data/essayStore.js';
-import { loadBook, addMove, countLearnedMoves } from '../lib/moveBook.js';
+import { loadBook, addMove, countLearnedMoves, hasEntry } from '../lib/moveBook.js';
 import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
+
+/**
+ * 粘贴进来的范文没有 id，而册子的键要靠 essayId 区分篇目。
+ * 所有粘贴篇共用一个假 id 的话，两篇不同的粘贴范文会互相把对方的 m1/m2/m3
+ * 当成自己收过的。所以每贴一篇就发一个真 id，重试时沿用同一个
+ * （runAnalyze 再次拿到的是已经带上 id 的 essay）。
+ */
+let pasteSeq = 0;
+function withEssayId(picked) {
+  if (picked?.id) return picked;
+  pasteSeq += 1;
+  return { ...picked, id: `pasted-${Date.now().toString(36)}-${pasteSeq}` };
+}
 
 /**
  * 主界面：选范文 → 拆解 → 用一招写自己的。
@@ -29,7 +42,9 @@ export default function Analyzer({ grade, onBack }) {
   const dockRef = useRef(null);
   const bookRef = useRef(null);
 
-  const runAnalyze = useCallback(async (picked) => {
+  const runAnalyze = useCallback(async (pickedEssay) => {
+    // 粘贴篇在这里补一个真 id——见 withEssayId 的说明
+    const picked = withEssayId(pickedEssay);
     setEssay(picked);
     setAnalysis(null);
     setActiveMoveId(null);
@@ -93,11 +108,12 @@ export default function Analyzer({ grade, onBack }) {
   }
 
   function handleCollect(move, fromElement, accent) {
-    setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id ?? 'pasted', from: 'essay' }));
+    const alreadyIn = hasEntry(book, { essayId: essay.id, moveId: move.id, from: 'essay' });
+    setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id, from: 'essay' }));
     // 收一招的回应：小白牌飞进顶栏，册子咚一下。
     // 和写完那句飞黄便签是两套——收进册子的是两样东西，飞一个样子就分不清了。
     // 已经收过的不再飞：重复播放的奖励看两次就腻。
-    if (fromElement && !collectedIds.includes(move.id)) {
+    if (fromElement && !alreadyIn) {
       flyCardTo(fromElement, bookRef.current, move.name, accent);
       punch(bookRef.current);
     }
@@ -116,7 +132,7 @@ export default function Analyzer({ grade, onBack }) {
       addMove({
         moveId: activeMoveId ?? 'unknown',
         name: activeMove?.name ?? '自己用的一招',
-        essayId: essay.id ?? 'pasted',
+        essayId: essay.id,
         from: 'own',
         mySentence: text,
       }),
@@ -136,8 +152,13 @@ export default function Analyzer({ grade, onBack }) {
   }
 
   const activeMove = analysis?.moves.find((move) => move.id === activeMoveId) ?? null;
-  const collectedIds = book.filter((item) => item.from === 'essay').map((item) => item.moveId);
-  const keptOwn = book.some((item) => item.from === 'own' && item.moveId === activeMoveId);
+  // 收过没、写过没，都要**连篇目一起比**。招式的 id 是 m1/m2/m3 按次生成的，
+  // 只比 moveId 会把别的篇目的同一序号当成自己收过的——册子里没有这一招，
+  // 卡片上却写着"已收进册子"，孩子点不动也不知道为什么。
+  const collectedIds = (analysis?.moves ?? [])
+    .filter((move) => hasEntry(book, { essayId: essay.id, moveId: move.id, from: 'essay' }))
+    .map((move) => move.id);
+  const keptOwn = hasEntry(book, { essayId: essay.id, moveId: activeMoveId, from: 'own' });
 
   return (
     <main className="an">
