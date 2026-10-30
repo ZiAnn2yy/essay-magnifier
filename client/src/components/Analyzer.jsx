@@ -6,8 +6,8 @@ import MoveCards from './MoveCards.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
 import { loadEssaysByGrade } from '../data/essayStore.js';
-import { loadBook, addMove } from '../lib/moveBook.js';
-import { flyTextTo, punch } from '../lib/flyTo.js';
+import { loadBook, addMove, countLearnedMoves } from '../lib/moveBook.js';
+import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
 
 /**
  * 主界面：选范文 → 拆解 → 用一招写自己的。
@@ -47,8 +47,9 @@ export default function Analyzer({ grade, onBack }) {
         // 不用等模型；粘贴的范文没有 id，走实时拆解。
         essayId: picked.id ?? '',
         essayText: picked.text,
-        // 支架撤除的依据：册子越厚，这一篇越少直接标好，越多的招让孩子自己找
-        collectedCount: loadBook().length,
+        // 支架撤除的依据：册子越厚，这一篇越少直接标好，越多的招让孩子自己找。
+        // 只数学来的招，不数自己写过的句子——见 moveBook.js 里 countLearnedMoves 的说明。
+        collectedCount: countLearnedMoves(loadBook()),
       });
       if (data.crisis) {
         setStatus('crisis');
@@ -91,8 +92,15 @@ export default function Analyzer({ grade, onBack }) {
     });
   }
 
-  function handleCollect(move) {
+  function handleCollect(move, fromElement, accent) {
     setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id ?? 'pasted', from: 'essay' }));
+    // 收一招的回应：小白牌飞进顶栏，册子咚一下。
+    // 和写完那句飞黄便签是两套——收进册子的是两样东西，飞一个样子就分不清了。
+    // 已经收过的不再飞：重复播放的奖励看两次就腻。
+    if (fromElement && !collectedIds.includes(move.id)) {
+      flyCardTo(fromElement, bookRef.current, move.name, accent);
+      punch(bookRef.current);
+    }
   }
 
   /**
@@ -301,23 +309,57 @@ function BasisNote({ basis, attempts, degraded, precomputed }) {
   );
 }
 
+/**
+ * 册子面板。
+ *
+ * 2026-10-30 补上两处：
+ *   1. **自己写的那句要能读回来**。mySentence 一直存着，但这里只渲染
+ *      "我自己用上的"五个字——孩子写完、看它飞进册子、计数跳一下，
+ *      然后打开册子，找不到自己写过的那句话。飞行动画的终点是个看不见
+ *      东西的盒子。对写作产品来说，"能回头读自己写过的话"是最深的激励。
+ *   2. **两个数分开**。原来标题写"N 招"，可册子里混着从范文学来的招和
+ *      自己写上的句，把句子数叫"招"是错的。拆成两行，各自标清楚。
+ */
 function MoveBook({ entries, onClose }) {
+  const learned = entries.filter((entry) => entry.from === 'essay');
+  const written = entries.filter((entry) => entry.from === 'own');
+
   return (
     <div className="an-book-panel" role="dialog" aria-label="我的招式册子">
       <header className="an-book-head">
-        <h3>我的册子 · {entries.length} 招</h3>
+        <h3>我的册子</h3>
         <button type="button" onClick={onClose}>
           关上
         </button>
       </header>
+
+      <p className="an-book-tally">
+        <span>
+          学来的 <strong>{learned.length}</strong> 招
+        </span>
+        <span>
+          写上的 <strong>{written.length}</strong> 句
+        </span>
+      </p>
+
       {entries.length === 0 ? (
         <p className="an-book-empty">还空着。拆一篇范文，点「收进册子」。</p>
       ) : (
         <ul className="an-book-list">
           {entries.map((entry) => (
             <li key={`${entry.moveId}-${entry.from}-${entry.at}`}>
-              <strong>{entry.name}</strong>
-              <span>{entry.from === 'essay' ? '从范文学来的' : '我自己用上的'}</span>
+              {entry.from === 'own' ? (
+                <>
+                  {/* 自己写的那句排在最前：册子里最值得回头看的就是它 */}
+                  <p className="an-book-mine">{entry.mySentence}</p>
+                  <span>用「{entry.name}」写上的</span>
+                </>
+              ) : (
+                <>
+                  <strong>{entry.name}</strong>
+                  <span>从范文学来的</span>
+                </>
+              )}
             </li>
           ))}
         </ul>

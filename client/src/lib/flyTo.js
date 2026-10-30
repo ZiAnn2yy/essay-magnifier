@@ -63,3 +63,63 @@ export function punch(element) {
   element.classList.add('is-punched');
   window.setTimeout(() => element.classList.remove('is-punched'), 420);
 }
+
+/**
+ * 把一张小牌从卡片飞进顶栏的册子。
+ *
+ * 和 flyTextTo 的分工：**句子飞黄便签，招式飞小白牌**。
+ * 两者都是"自己按下去的那一下"的回应，但收进册子的是两样东西，
+ * 飞同一个样子孩子就分不清刚收的是什么。
+ *
+ * 牌的形态照 MoveCards 的静态语言缩印：白底、粗描边、左边一道彩色厚边
+ * （那一抹是这一招的 accent，由调用方传进来）。
+ *
+ * @param {HTMLElement} source 起点元素（「收进册子」按钮所在的卡片）
+ * @param {HTMLElement} target 终点元素（顶栏的册子按钮）
+ * @param {string} label 牌上写的字（招式名）
+ * @param {string} accent 左边厚边的颜色，一般是 var(--orange) / var(--pink)
+ */
+export function flyCardTo(source, target, label, accent) {
+  if (!source || !target) return;
+
+  const from = source.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+  if (from.width === 0 || to.width === 0) return;
+
+  const text = typeof label === 'string' && label.length > 0 ? label : '一招';
+
+  const ghost = document.createElement('div');
+  ghost.textContent = text.length > 8 ? `${text.slice(0, 8)}…` : text;
+  ghost.style.cssText = [
+    'position:fixed',
+    `left:${from.left}px`,
+    `top:${from.top}px`,
+    'z-index:55',
+    'padding:6px 11px',
+    'font-family:var(--font-round)',
+    'font-size:13px',
+    'font-weight:700',
+    'line-height:1.4',
+    'color:var(--ink)',
+    'background:var(--white)',
+    'border:3px solid var(--ink)',
+    `border-left:8px solid ${accent ?? 'var(--orange)'}`,
+    'border-radius:var(--r-md)',
+    'box-shadow:var(--lift-sm)',
+    'pointer-events:none',
+    'transition:transform .58s cubic-bezier(.34,1.4,.64,1), opacity .58s ease-in',
+  ].join(';');
+
+  document.body.appendChild(ghost);
+
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+
+  requestAnimationFrame(() => {
+    // 一边缩小一边歪过去：收进册子是被"收"走，不是被"放"进去
+    ghost.style.transform = `translate(${dx}px, ${dy}px) scale(.3) rotate(${dx > 0 ? 14 : -14}deg)`;
+    ghost.style.opacity = '0.15';
+  });
+
+  window.setTimeout(() => ghost.remove(), 640);
+}

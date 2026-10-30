@@ -41,17 +41,23 @@ export default function MoveCards({ moves, activeMoveId, onSelect, onUse, onColl
           return (
             <li
               key={move.id}
-              className={`move${isActive ? ' is-active' : ''}`}
+              className={`move${isActive ? ' is-active' : ''}${isCollected ? ' is-collected' : ''}`}
               style={{
                 '--move-accent': index % 2 === 0 ? 'var(--orange)' : 'var(--pink)',
                 '--fan': `${fan}deg`,
                 '--i': index,
-                zIndex: isActive ? 5 : moves.length - index,
+                // 置顶那张要压在其它牌上面，否则滚动时会被后来者盖住。
+                // 10 是量过的：高于所有兄弟牌（最多到 moves.length），
+                // 但仍低于册子面板（20）和飞字/飞牌（55-60）——
+                // 奖励那一刻必须看得见，不能被置顶卡挡住。
+                zIndex: isActive ? 10 : moves.length - index,
               }}
             >
               <div className="move-deal">
                 <div className="move-head">
-                  <span className="move-index">{index + 1}</span>
+                  <span className="move-index">
+                    <span className="move-index-num">{index + 1}</span>
+                  </span>
                   <h4 className="move-name">{move.name}</h4>
                 </div>
 
@@ -77,7 +83,9 @@ export default function MoveCards({ moves, activeMoveId, onSelect, onUse, onColl
                   <button
                     type="button"
                     className={`move-collect${isCollected ? ' is-collected' : ''}`}
-                    onClick={() => onCollect(move)}
+                    onClick={(event) =>
+                      onCollect(move, event.currentTarget, index % 2 === 0 ? 'var(--orange)' : 'var(--pink)')
+                    }
                     disabled={isCollected}
                   >
                     {isCollected ? '已收进册子' : '收进册子'}

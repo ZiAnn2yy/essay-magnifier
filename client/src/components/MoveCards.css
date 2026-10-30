@@ -65,9 +65,52 @@
   transform: rotate(var(--fan)) translateY(-3px);
 }
 
+/**
+ * 用上的那一招：置顶 + 跟踪。
+ *
+ * 为什么是 sticky 不是"挪到列表最前面"：孩子点「用这一招」之后要往下滚到
+ * 写作坞去写，滚下去之后就看不见自己在用哪一招了。sticky 让它钉在招式列表
+ * 的顶部跟着滚，范文在左、正在用的招在右上、写作坞在右下——三样同时看得见。
+ *
+ * 之所以能成立：.moves-list 自己是 overflow-y:auto 的滚动容器，
+ * sticky 的包含块就是它，钉的是它的顶边。
+ * 后来的牌会从这张下面钻过去（margin-top:-14px 那套压着的关系不变），
+ * 靠 z-index 保证压的是别人不是自己。
+ */
 .move.is-active {
+  position: sticky;
+  top: 2px;
   transform: rotate(0deg) scale(1.02);
   box-shadow: var(--lift-lg);
+}
+
+/* 收进册子之后的牌：不是变灰，是"这一张已经有主了"。
+   左边那道厚边换成册子的黄，编号章换成勾——牌还在原处，
+   只是从此归这孩子了。禁用态只用在按钮上，整卡不做灰。 */
+.move.is-collected {
+  border-left-color: var(--yellow);
+}
+
+.move.is-collected .move-index {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.move.is-collected .move-index-num {
+  visibility: hidden;
+}
+
+/* 勾盖在原来的编号上，不另外占地方——编号是"这篇的第几招"，
+   收了之后那个序号就不如"已收"重要，但位置要留着，牌才不会跳 */
+.move.is-collected .move-index::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* 内层管进场：发牌式依次落下来。
@@ -92,6 +135,7 @@
 }
 
 .move-index {
+  position: relative;
   display: grid;
   place-items: center;
   width: 26px;
@@ -232,4 +276,11 @@ html.motion-off .move, html.motion-off .move-use, html.motion-off .move-collect 
 
 html.motion-off .move-deal {
   animation: none;
+}
+
+/* 无障碍退路只关动画，不关状态：置顶和"已收"是信息不是装饰，
+   关了它们孩子就不知道自己正在用哪一招、哪一招已经收过了。
+   所以这里只摘掉缩放，sticky 留着。 */
+html.motion-off .move.is-active {
+  transform: none;
 }

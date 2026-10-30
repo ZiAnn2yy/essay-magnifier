@@ -270,6 +270,25 @@
   gap: 8px;
 }
 
+/* 两个数分开摆：学来的招和写上的句是两样成就，混成一个数
+   孩子不知道自己攒的是什么。也让"我写了三句"这件事被看见。 */
+.an-book-tally {
+  display: flex;
+  gap: 14px;
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 2px dashed var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.an-book-tally strong {
+  font-family: var(--font-round);
+  font-size: 15px;
+}
+
 .an-book-list li {
   display: flex;
   flex-direction: column;
@@ -278,6 +297,19 @@
   background: var(--sky);
   border: 2px solid var(--ink);
   border-radius: var(--r-sm);
+}
+
+/* 自己写的那一句用黄底，和"学来的招"分开——这是孩子自己的东西，
+   不是从别人那儿拿的。也让它在一屏里第一眼跳出来。 */
+.an-book-list li:has(.an-book-mine) {
+  background: rgba(255, 210, 63, 0.42);
+}
+
+.an-book-mine {
+  margin: 0 0 3px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink);
 }
 
 .an-book-list strong {

@@ -32,6 +32,24 @@ function keyOf(entry) {
   return `${entry.essayId}::${entry.moveId}::${entry.from}`;
 }
 
+/**
+ * 学来的招数：只数 `from: 'essay'`，不数自己写过的句子。
+ *
+ * 这个数是**支架撤除**的依据（服务端按它决定这一篇还直接标几招、
+ * 要不要给 challenge）。所以它必须只反映"见过多少招"。
+ *
+ * 2026-10-30 之前调用方传的是 `loadBook().length`——册子里混着两种条目，
+ * 于是孩子在十篇范文里反复用同一招写十句，册子厚到 10，服务端判定该撤支架，
+ * prompt 还会跟他说"你已经自己攒下 10 招了"。他并没有更会自己找招，
+ * 只是同一招练了十次。**撤除的依据是见过多少招，不是写过多少字。**
+ *
+ * @param {Array} entries 册子条目，传 loadBook() 的结果
+ * @returns {number} 从范文学来的招数
+ */
+export function countLearnedMoves(entries) {
+  return (Array.isArray(entries) ? entries : []).filter((entry) => entry.from === 'essay').length;
+}
+
 export function loadBook() {
   return read();
 }
