@@ -107,6 +107,24 @@
   border-radius: var(--r-sm);
 }
 
+/* 笔尖：一个跟着文字走的闪烁光标。
+   不画邮差、不画鸟（决策 22：不做角色/mascot）——
+   "有人在写"用一根笔尖表示就够，画了鸟反而是装饰。 */
+.dock-waiting-pen {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 5px;
+  vertical-align: -0.12em;
+  background: var(--ink);
+  animation: pen-blink 1.05s steps(2, start) infinite;
+}
+
+@keyframes pen-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
 .dock-error {
   margin: 0;
   padding: 9px 12px;
@@ -118,18 +136,73 @@
   border-radius: var(--r-sm);
 }
 
-.dock-reply {
-  padding: 12px 14px;
-  background: var(--sky);
+/**
+ * 读者的回信。
+ *
+ * 一封信，不是一条消息。视觉上把它和"作业批改"分开：左边是范文、
+ * 中间是招式、这里是有人写完放在这儿的。所以用信纸而不用气泡——
+ * 淡黄底、横线、行高 28px 让每一行正好落在一条格线上，
+ * 读起来像手写日记本，也就有了"有人一笔一划写下来"的分量。
+ *
+ * 不引新字体（决策：不加依赖，且这项目对包体积是算过账的），
+ * 质感全靠布局和颜色给。
+ */
+.letter {
+  padding: 12px 15px 10px;
+  background-color: #fffef0;
+  /* 横线每 28px 一条，和正文 line-height: 28px 对齐 */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    rgba(23, 56, 77, 0.14) 27px,
+    rgba(23, 56, 77, 0.14) 28px
+  );
   border: 2.5px solid var(--ink);
   border-radius: var(--r-md);
-  /* 读者的回应是"掉下来"的：过冲 + 落地，像一张纸条被拍在桌上 */
-  animation: dock-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: var(--lift-sm);
+  /* 信是"展开"的：从对折的状态打开，过冲一下再落定 */
+  animation: letter-unfold 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes dock-drop {
-  from { transform: translateY(-14px) rotate(-1.5deg); opacity: 0; }
-  to { transform: translateY(0) rotate(0); opacity: 1; }
+@keyframes letter-unfold {
+  from { transform: scaleY(0.55) translateY(-8px); opacity: 0; }
+  to { transform: scaleY(1) translateY(0); opacity: 1; }
+}
+
+.letter-head {
+  margin-bottom: 8px;
+}
+
+.letter-label {
+  display: inline-block;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.letter-body {
+  margin: 0;
+  font-family: var(--font-round);
+  /* 28px 是刻意选的：和信纸横线的 28px 间距一致，每行落在格线上 */
+  font-size: 15px;
+  line-height: 28px;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* 落款右对齐，像信末的署名。不写具象角色——人格从文字来 */
+.letter-sign {
+  margin-top: 8px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: right;
 }
 
 /* 鼓励的话。不写"真棒"——空夸一眼就能看出来，
@@ -188,6 +261,12 @@
   white-space: pre-wrap;
 }
 
-html.motion-off .dock-reply {
+html.motion-off .dock-reply,
+html.motion-off .letter {
   animation: none;
+}
+
+html.motion-off .dock-waiting-pen {
+  animation: none;
+  opacity: 1;
 }

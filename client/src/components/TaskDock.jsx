@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './TaskDock.css';
 import { askReader } from '../api.js';
 
@@ -79,11 +79,7 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
         </button>
       </form>
 
-      {status === 'sending' && (
-        <p className="dock-waiting" role="status">
-          读者读得很慢。他读的是你写的句子，不是标准答案。
-        </p>
-      )}
+      {status === 'sending' && <WaitNote />}
 
       {error && (
         <p className="dock-error" role="alert">
@@ -97,10 +93,18 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
             这一句是你自己写出来的。它现在有读者了。
           </p>
 
-          <div className="dock-reply">
-            <span className="dock-reply-label">读者说</span>
-            <p className="dock-reply-text">{reply}</p>
-          </div>
+          {/* 读者的回应装进一封信里。
+              不是加装饰——是把它和"作业批改"在视觉上分开：
+              左边是范文、中间是招式、这里是有人写完信放在这儿。
+              信头、信身、落款三件套，落款不写具象角色（决策 22：不做 mascot），
+              只写"一直在读你的人"，人格的温暖从文字来，不从形象来。 */}
+          <article className="letter">
+            <header className="letter-head">
+              <span className="letter-label">来自读者的回信</span>
+            </header>
+            <p className="letter-body">{reply}</p>
+            <footer className="letter-sign">—— 一直在读你的人</footer>
+          </article>
 
           <button
             type="button"
@@ -113,5 +117,39 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * 等待态。
+ *
+ * 为什么要分档：真模型一次读者回应实测中位数 31 秒、长尾过 60 秒，
+ * 一句话挂在那儿会让人以为卡死了。分档和 Analyzing 同一个路子——
+ * 随时间承认"还在写"，不假装快。
+ *
+ * 三档文案都做了一件事：**说清慢的理由**。第二档那句"他读的是你写的句子，
+ * 不是标准答案"是原来就有的，别删——它是这个产品对"慢"的解释，
+ * 没有它，等待就只是等待。
+ */
+function WaitNote() {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setElapsed((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const line =
+    elapsed < 8
+      ? '正在把这句话装进信封……'
+      : elapsed < 25
+        ? '读者正在拆信。他读的是你写的句子，不是标准答案。'
+        : '笔尖在纸上沙沙作响，回信马上就好。';
+
+  return (
+    <p className="dock-waiting" role="status">
+      {line}
+      <span className="dock-waiting-pen" aria-hidden="true" />
+    </p>
   );
 }
