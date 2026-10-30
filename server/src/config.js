@@ -24,6 +24,13 @@ const llm = {
   model: readStr('LLM_MODEL'),
   // 当前模型只接受 temperature=1；做成可配置，换模型时不必改代码
   temperature: Number(readStr('LLM_TEMPERATURE', '1')) || 1,
+  // 思考强度。2026-10-30 实测（server/scripts/probe-stepfun.mjs）：
+  //   step-5-preview 不传      15.1s  finish=stop  正文 2393 字
+  //   reasoning_effort=low      6.8s  finish=stop  正文  605 字
+  // 这是"推理模型 reasoning 长度不可预测"那条难题的解法——不是加大预算
+  // 去赌它想多久，而是让它少想。**默认 low**：拆解是孩子点一下就要等的事，
+  // 44 秒的拆解没有人能等。留空则不传这个参数（换不接受它的模型时用）。
+  reasoningEffort: readStr('LLM_REASONING_EFFORT', 'low'),
 };
 
 export const config = {
@@ -36,7 +43,14 @@ export const config = {
   // /api/chat 直接走降级话术，不发起任何上游请求。
   llmReady: Boolean(llm.apiUrl && llm.apiKey && llm.model),
 
-  timeoutMs: readInt('LLM_TIMEOUT_MS', 30000),
+  // 单次模型调用的兜底超时。两个真实任务都自己覆盖（analyze.js 的
+  // ANALYZER_TIMEOUT_MS、reader.js 的 READER_TIMEOUT_MS，都是 90 秒），
+  // 所以这个值只是"忘了覆盖时的地板"。
+  // 30000 是骨架期的值，对推理模型不够：实测读者回应 6 次里
+  // 4.2/9.3/30.6/31.4/40.8/60+ 秒，中位数就在 31 秒——
+  // 30 秒会砍掉其中一半，孩子收到的是"模型没有连上"的兜底话术。
+  // 部署时即使忘了在环境变量里填 LLM_TIMEOUT_MS，也不该因此冤杀调用。
+  timeoutMs: readInt('LLM_TIMEOUT_MS', 60000),
   maxRetries: readInt('LLM_MAX_RETRIES', 2),
   maxTurns: readInt('AGENT_MAX_TURNS', 8),
 

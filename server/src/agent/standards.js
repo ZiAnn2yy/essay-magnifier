@@ -16,16 +16,48 @@
  * 3. **代码侧检索，不由模型自己决定调不调。** 当前推理模型与 tool_choice 不兼容，
  *    自主工具调用这条路实测走不通。所以是"代码编排的 agent"：
  *    检索、核对、重试都由代码决定，模型只负责生成。
+ *
+ * 2026-10-30 扩充。新增三类内容，都是为了补上同一个缺口：
+ * 拆解 prompt 原先只按年级检索，于是**同一篇范文拆出来的东西和它的类型无关**——
+ * 《爷爷的木工房》和《雨后的花园》拿到的是同一套学段要求。而孩子选范文时
+ * 第一眼看到的就是"写人/记事/写景"这个分类，拆解却闭着眼睛拆。
+ * 现在按 `topic` 取文体视角卡，检索粒度从"年级"细到"年级 + 类型"。
+ *
+ * 同时加了 `stages` 字段。起因是一个分类错误：管建刚的卡片写着"反对作前指导"，
+ * 它却一直在被当成"可依据的教学法资料"喂给拆解 prompt。**他是这个产品的约束，
+ * 不是拆解的依据**（见 docs/wiki/02）。卡片不标用途，检索就分不清
+ * "照这个拆"和"别越过这条线"，prompt 会把两者混成一句"可依据的资料"。
  */
 
-/** @typedef {{id:string, topic:string, grades:number[], content:string, source:string, verified:boolean}} StandardCard */
+/** @typedef {{id:string, topic:string, grades:number[], stages:string[], content:string, source:string, verified:boolean}} StandardCard */
+
+/**
+ * 文体类型。取值与范文库里 `essay.topic` 完全一致——
+ * 这样 `lookupStandards(grade, essay.topic)` 直接就能取到文体卡，
+ * 不需要在两边各维护一份映射表。
+ */
+export const GENRE_TOPICS = ['写人', '记事', '写景', '状物', '想象'];
+
+/**
+ * 卡片的用途阶段。
+ *  - `analyze`：可以作为"这一篇照什么拆"的依据（阶段二）
+ *  - `read`：可以作为"怎么回应孩子"的依据（阶段三）
+ * 只写约束的卡（管建刚、张田若）不挂在 analyze 上，原因见文件头。
+ */
+export const STAGES = ['analyze', 'read'];
 
 /** @type {StandardCard[]} */
 export const STANDARD_CARDS = [
+  /* ------------------------------------------------------------
+     学段要求。来源《义务教育语文课程标准（2022 年版）》。
+     按学段拆成多张而不是一张：拆解 prompt 每次只该拿到和这一篇有关的几句，
+     一卡一个可引用的点，检索时也才能按维度取。
+     ------------------------------------------------------------ */
   {
     id: 'std-curriculum-band2',
     topic: '学段要求',
     grades: [3, 4],
+    stages: ['analyze', 'read'],
     content:
       '第二学段（3-4 年级）习作要求：不拘形式地写下自己的见闻、感受和想象，' +
       '愿意与他人分享习作的快乐。尝试运用有新鲜感的词句。',
@@ -37,6 +69,7 @@ export const STANDARD_CARDS = [
     id: 'std-curriculum-band3',
     topic: '学段要求',
     grades: [5, 6],
+    stages: ['analyze', 'read'],
     content:
       '第三学段（5-6 年级）习作要求：懂得写作是为了自我表达和与人交流。' +
       '修改自己的习作，并主动与他人交换修改。做到语句通顺，行款正确，书写规范、整洁。',
@@ -44,19 +77,124 @@ export const STANDARD_CARDS = [
     verified: false,
   },
   {
-    id: 'std-rong-weidong',
-    topic: '教学法依据',
-    grades: [3, 4, 5, 6],
+    // 从 band2 那句里单独拆出来的一个点。它是产品里少数几条
+    // "课标原词"级别的依据——"有新鲜感的词句"这七个字是课标自己写的。
+    id: 'std-curriculum-band2-content',
+    topic: '学段要求',
+    grades: [3, 4],
+    stages: ['analyze'],
     content:
-      '交际语境写作：写作是作者在特定语境中进行的表达和交流活动，五要素为' +
-      '作者、读者、目的、话题、语言。写作动机来自内在的表达需要，以达成交际功能为宗旨。',
-    source: '荣维东·交际语境写作理论（据用户提供的研究资料转述）',
+      '"不拘形式地写下自己的见闻、感受和想象"点了三种内容：见闻（写发生了什么事）、' +
+      '感受（写我觉得怎么样）、想象（写我想出来的）。三类文章的看点不一样——' +
+      '拆解时先看这一篇落在哪一类，再谈它那一类该怎么写。',
+    source: '《义务教育语文课程标准（2022 年版）》第二学段"表达与交流"',
     verified: false,
   },
+  {
+    // 这条挡的是一个具体误区：把"有新鲜感"理解成"用了好词好句/四字成语"。
+    // wiki/02 记着一线教师的批评（《毁掉孩子写作灵气的往往是"好词好句"》），
+    // 拆解时挑词必须挑"这个词是作者自己带来的"，不是挑"这个词高级"。
+    id: 'std-curriculum-band2-fresh',
+    topic: '学段要求',
+    grades: [3, 4],
+    stages: ['analyze'],
+    content:
+      '"尝试运用有新鲜感的词句"是课标原词，只出现在第二学段，第一学段没有。' +
+      '新鲜感指的是这个词句是作者自己带来的、读者没想到会这么写，' +
+      '不是"用了成语或四字词语"。所以挑出来的词必须是这一篇里独有的说法，' +
+      '不是换个题目也能用的通用好词。',
+    source: '《义务教育语文课程标准（2022 年版）》第二学段"表达与交流"',
+    verified: false,
+  },
+  {
+    // 第三学段那条"修改自己的习作，并主动与他人交换修改"是产品阶段三
+    // （读者回应）的课标依据：写作在这里已经是"有人看、要改"的事。
+    id: 'std-curriculum-band3-exchange',
+    topic: '学段要求',
+    grades: [5, 6],
+    stages: ['analyze', 'read'],
+    content:
+      '第三学段要求"修改自己的习作，并主动与他人交换修改"。这意味着五、六年级的' +
+      '写作已经是一件有人看、要拿出去改的事。所以拆解这一学段的范文时，' +
+      '可以谈"这一句是写给人看的"，也可以谈作者在哪里改过自己的想法。',
+    source: '《义务教育语文课程标准（2022 年版）》第三学段"表达与交流"',
+    verified: false,
+  },
+
+  /* ------------------------------------------------------------
+     文体视角。**这一类是产品自己写的教学判断，不是文献转述。**
+     标 verified:false 且 source 里写明"产品自拟"，是因为规范§五要求
+     事实性内容给出处——把自拟内容伪装成课标原文比没有依据更糟。
+     它们回答的是同一个问题：拿到某一类范文，先看哪几处。
+     ------------------------------------------------------------ */
+  {
+    id: 'std-genre-narration',
+    topic: '记事',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '一篇记事文，先看三处：这件事是从哪一句开始的（好的记事很少从"有一天"开始）、' +
+      '中间哪一句被写得最慢、最后停在哪一句上。一件事的来龙去脉走得清不清楚，' +
+      '是记事文最先要看的事。',
+    source: '产品自拟的拆解视角（依据：课标2022第二学段"写下自己的见闻"；本篇为教学判断，非文献原文）',
+    verified: false,
+  },
+  {
+    id: 'std-genre-person',
+    topic: '写人',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '一篇写人文，先看两处：这个人有没有一个来回出现的动作或东西、' +
+      '作者有没有写"我"对他做过什么。只说"他很勤劳""她很关心我"不算数，' +
+      '要有一个眼睛能看见的动作。',
+    source: '产品自拟的拆解视角（依据：课标2022第二学段"写下自己的感受"；本篇为教学判断，非文献原文）',
+    verified: false,
+  },
+  {
+    id: 'std-genre-scene',
+    topic: '写景',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '一篇写景文，先看三处：按什么顺序走（从远到近、从下到上、从早到晚）、' +
+      '有没有一处停下来细看、有没有写"我"在不在画面里。' +
+      '通篇没有"我"的写景，容易写成说明书。',
+    source: '产品自拟的拆解视角（依据：课标2022第二学段"写下自己的见闻"；本篇为教学判断，非文献原文）',
+    verified: false,
+  },
+  {
+    id: 'std-genre-object',
+    topic: '状物',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '一篇状物文，先看两处：这个东西和作者之间有没有发生过一件事、' +
+      '有没有写它哪里不完美。只写外形加用途，是产品说明书，不是作文。',
+    source: '产品自拟的拆解视角（依据：课标2022第二学段"不拘形式"；本篇为教学判断，非文献原文）',
+    verified: false,
+  },
+  {
+    id: 'std-genre-fantasy',
+    topic: '想象',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '一篇想象文，先看两处：想象有没有一个说清楚的"假如"（假如我会飞、' +
+      '假如我家猫会说话）、飞起来以后有没有落回真的感情。' +
+      '只有离奇没有感情的想象，读完什么也不剩。',
+    source: '产品自拟的拆解视角（依据：课标2022第二学段"写下自己的想象"；本篇为教学判断，非文献原文）',
+    verified: false,
+  },
+
+  /* ------------------------------------------------------------
+     教学法依据。全部来自用户在 2026-10-29 提供的研究资料，均为二手转述。
+     ------------------------------------------------------------ */
   {
     id: 'std-wang-rongsheng',
     topic: '教学法依据',
     grades: [3, 4, 5, 6],
+    stages: ['analyze', 'read'],
     content:
       '语文课程内容的选文可分四类：定篇、例文、样本、用件。其中"例文"的价值不在于' +
       '被欣赏或模仿，而在于让学生看到"这一类文章是怎么写成的"，从而获得"怎么写"的知识。',
@@ -67,6 +205,7 @@ export const STANDARD_CARDS = [
     id: 'std-bruner-scaffold',
     topic: '教学法依据',
     grades: [3, 4, 5, 6],
+    stages: ['analyze', 'read'],
     content:
       '支架式教学以最近发展区为基础：教师或学习材料如同建筑脚手架，阶段性提供支撑，' +
       '随学习者能力提升逐步撤除。撤除路径通常从高密度框架到低密度提示再到独立输出。' +
@@ -75,19 +214,79 @@ export const STANDARD_CARDS = [
     verified: false,
   },
   {
+    id: 'std-ye-shengtao',
+    topic: '教学法依据',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze', 'read'],
+    content:
+      '我手写我口：平常说的话是口头语言，写到纸面上是书面语言，两者连起来才是语文。' +
+      '书面语不是另一套东西，是口语的书面化延伸。所以孩子句子里带着说话的口气不是毛病；' +
+      '拆解时可以指出来"这一句读起来像你正在说"，但要先确认这一句真的这么读。',
+    source: '叶圣陶·"我手写我口"（据用户提供的研究资料转述）',
+    verified: false,
+  },
+  {
+    id: 'std-li-baijian',
+    topic: '教学法依据',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '前作文教学："在还没有开始写作时的教学"。"没什么好写"往往不是缺技巧，是缺体验。' +
+      '抓手是五官并用观察法——看、听、摸、闻、尝，一样一样说。' +
+      '拆解写景、状物、记事这类范文时，可以看它有没有写进身体感觉到的东西，' +
+      '而不只是眼睛看到的东西。',
+    source: '李白坚·前作文教学与观察法（据用户提供的研究资料转述）',
+    verified: false,
+  },
+  {
+    // 依据最弱的一条，所以内容里自带使用限制。wiki/02 明确记着：
+    // "先放后收"是不是张田若原话资料未给出确证，"收"的时机和方式也不清晰。
+    // 留在库里是为了让 PPT 的风险识别页有东西可写，不是为了让 prompt 引用它。
+    id: 'std-zhang-tianruo',
+    topic: '教学法依据',
+    grades: [3, 4, 5, 6],
+    stages: ['analyze'],
+    content:
+      '分步习作：口语训练 → 写话训练 → 作文训练，三、四年级正处在写话转向作文的位置。' +
+      '起步阶段倾向"放"——"学生作文写什么都可以……愿意怎么写就怎么写，不要给框框"。' +
+      '注意：「先放后收」是否张田若本人原话未获确证，"收"的时机与方式在他的框架里并不清晰。' +
+      '引用这条时只能说"作文教学里普遍主张起步阶段先放开"，**不要点名，也不要引用那句原话**。',
+    source: '张田若·分步习作体系（依据不足，"先放后收"未核对原著，勿引用原话）',
+    verified: false,
+  },
+  {
+    // 荣维东已按 2026-10-29 的决策降级：不再是产品脊柱，只作为阶段三
+    // "读者身份"的依据。所以 stages 只有 read——他不该出现在拆解依据里。
+    id: 'std-rong-weidong',
+    topic: '教学法依据',
+    grades: [3, 4, 5, 6],
+    stages: ['read'],
+    content:
+      '交际语境写作：写作是作者在特定语境中进行的表达和交流活动，五要素为' +
+      '作者、读者、目的、话题、语言。写作动机来自内在的表达需要，以达成交际功能为宗旨。',
+    source: '荣维东·交际语境写作理论（据用户提供的研究资料转述；2026-10-29 起仅作阶段三读者身份依据）',
+    verified: false,
+  },
+  {
+    // 管建刚是约束不是依据：他反对作前指导，而拆解范文发生在孩子动笔之前。
+    // 把这张卡喂给拆解 prompt 是分类错误——它会诱导模型去讲"讲评课三环节"。
+    // 他真正约束的是阶段三：回应只能对着孩子已经写下的东西说。
     id: 'std-guan-jiangang',
     topic: '教学法依据',
     grades: [5, 6],
+    stages: ['read'],
     content:
       '作后讲评：反对作前指导，理由是"还没给病人把脉，也没做化验，想当然地给病人吃药"。' +
-      '讲评课三环节为欣赏、挑刺、指导或训练，全部发生在学生完整写完、教师看完之后。',
-    source: '管建刚·作后讲评（据用户提供的研究资料转述）',
+      '讲评课三环节为欣赏、挑刺、指导或训练，全部发生在学生完整写完、教师看完之后。' +
+      '对阶段三的约束：只能回应孩子已经写下的东西，不能预告他下一句该写什么。',
+    source: '管建刚·作后讲评（据用户提供的研究资料转述；本产品只用作约束，不作拆解依据）',
     verified: false,
   },
   {
     id: 'std-he-jie',
     topic: '教学法依据',
     grades: [3, 4],
+    stages: ['read'],
     content:
       '百字作文：每天写一句，句句可见，越攒越多。针对的是"没什么好写"——' +
       '学生缺的往往不是技巧而是写作欲望和习惯，解法是天天写、哪怕每天只写一句话。',
@@ -97,24 +296,60 @@ export const STANDARD_CARDS = [
 ];
 
 /**
- * 按学段取依据。
+ * 按学段、主题、用途取依据。
  *
- * 先取该年级的学段要求（一定有），再取跨学段的教学法依据。
+ * 三个过滤条件都是可选的。**注意 topic 是单值等式过滤**：传 `写人` 就只拿
+ * 文体卡，学段要求和教学法卡会被一并滤掉。要"全都要"的场景用
+ * `lookupForAnalysis`，别在这里拼。
+ *
  * 找不到就返回空数组——调用方必须处理"没有依据"这种情况，
  * 并把它如实告诉模型，而不是让模型换个说法编一个。
  *
  * @param {number} grade 3-6
- * @param {string} [topic] 主题过滤，如"学段要求"
+ * @param {string} [topic] 主题过滤。传 `学段要求`/`教学法依据` 取分类卡，
+ *   传 `写人`/`记事`/… 取文体卡（取值见 GENRE_TOPICS）
+ * @param {string} [stage] 用途过滤，`analyze` 或 `read`，见 STAGES
  * @returns {StandardCard[]}
  */
-export function lookupStandards(grade, topic) {
+export function lookupStandards(grade, topic, stage) {
   if (!Number.isInteger(grade) || grade < 3 || grade > 6) return [];
 
   return STANDARD_CARDS.filter((card) => {
     if (!card.grades.includes(grade)) return false;
     if (topic !== undefined && card.topic !== topic) return false;
+    if (stage !== undefined && !card.stages.includes(stage)) return false;
     return true;
   });
+}
+
+/**
+ * 一次拆解要用的**全部**依据：学段要求 + 文体视角 + 教学方法。
+ *
+ * 为什么不能直接 `lookupStandards(grade, topic, 'analyze')`：那样传了
+ * `写人` 就只拿得到文体卡，课标和教学法卡被 topic 等式一并滤掉。
+ * 2026-10-30 真犯过这个错——basis.summary 退化成一句"这一篇是写人"，
+ * methodCount 变 0，而四条新评测全绿：它们各自验的是"文体卡取得到"
+ * "约束卡不进 analyze"，没有一条验"三类卡同时到"。
+ * **所以这条合并逻辑必须有用例锁着**，见 eval 的 kb-006。
+ *
+ * @param {number} grade 3-6
+ * @param {string} [topic] 这一篇的文体类型，取值见 GENRE_TOPICS；粘贴的范文没有，传空
+ * @returns {StandardCard[]}
+ */
+export function lookupForAnalysis(grade, topic) {
+  const byGrade = lookupStandards(grade, undefined, 'analyze');
+  const byTopic = topic ? lookupStandards(grade, topic, 'analyze') : [];
+
+  // 按 id 去重。文体卡的 topic 只在 GENRE_TOPICS 里取值，本来不会和
+  // "学段要求""教学法依据" 撞上；去重是让"传错了值"的后果从重复变成无害。
+  const merged = [];
+  const seen = new Set();
+  for (const card of [...byGrade, ...byTopic]) {
+    if (seen.has(card.id)) continue;
+    seen.add(card.id);
+    merged.push(card);
+  }
+  return merged;
 }
 
 /** 把卡片渲染成能塞进 prompt 的文本。出处与核实状态必须一起带上。 */

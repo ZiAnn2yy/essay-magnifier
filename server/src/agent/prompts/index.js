@@ -103,6 +103,8 @@ const ANALYZER = [
  * @param {number} grade 3-6
  * @param {Object} [context]
  * @param {string} [context.standardsText] 检索到的学段要求与教学法依据，来自 agent/standards.js
+ * @param {string} [context.topic] 这一篇的类型（记事/写人/写景/状物/想象）。带上它，
+ *   模型才知道下面那份文体视角卡说的是哪一类文章
  * @param {number} [context.collectedCount] 孩子收藏册里已有的招数——支架撤除的依据
  * @param {string} [context.retryReason] 上一次被拒绝的原因，带上它就是自纠错轮
  */
@@ -115,11 +117,21 @@ export function buildAnalyzerPrompt(grade, context = {}) {
 
   const parts = [ANALYZER, bandNote];
 
+  // 文体先立起来，再给资料。否则下面那份"一篇记事文先看三处"的卡
+  // 是飘着的——模型不知道它正在拆的正是记事文。
+  if (context.topic) {
+    parts.push(`这一篇是「${context.topic}」类的范文。`);
+  } else {
+    // 粘贴进来的范文没有类型标注。让它自己判，因为文体视角卡就在下面，
+    // 判完才看得懂那几张卡在说什么。
+    parts.push('这一篇的类型没有标注。你先判断它是写人、记事、写景、状物还是想象，再拆。');
+  }
+
   // 依据必须来自知识库，不能让模型凭印象说"课标要求…"。
   // 检索不到就明说没有依据——这比编一个出处更符合规范§五。
   if (context.standardsText) {
     parts.push(
-      '可依据的学段要求与教学法资料（引用时注明出处，资料没有提到的不要硬扯）：\n' +
+      '可依据的资料（学段要求、文体视角、写作教学方法；引用时注明出处，资料没有提到的不要硬扯）：\n' +
         context.standardsText,
     );
   } else {

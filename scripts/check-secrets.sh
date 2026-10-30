@@ -45,10 +45,21 @@ PATTERNS=(
   'Bearer [A-Za-z0-9._-]{20,}'
 )
 
+# 这两个文件里也有上面那几条模式串——它们自己就是扫描器，模式是它们的工具。
+# 不排除的话，每次提交前自检都会把"正则字面量"当成"真 Key"报出来，
+# 红得多了就没人看了。**只排除这两个文件，别图省事整个 scripts/ 都排除。**
+SCANNERS=(
+  'scripts/check-secrets.sh'
+  'scripts/pack-modelscope.mjs'
+)
+
 if [ "$in_git_repo" -eq 1 ]; then
   for pattern in "${PATTERNS[@]}"; do
-    # 排除模板文件与本脚本自身，否则脚本里的模式串会自我命中
-    hits="$(git grep -nEI "$pattern" -- . ':!*.example' ':!scripts/check-secrets.sh' 2>/dev/null || true)"
+    excludes=(':!*.example')
+    for scanner in "${SCANNERS[@]}"; do
+      excludes+=(":!$scanner")
+    done
+    hits="$(git grep -nEI "$pattern" -- . "${excludes[@]}" 2>/dev/null || true)"
     if [ -n "$hits" ]; then
       echo "  FAIL  命中模式 [$pattern]："
       echo "$hits" | sed 's/^/        /'
@@ -60,9 +71,11 @@ if [ "$in_git_repo" -eq 1 ]; then
 else
   echo "  skip  当前不是 git 仓库，改用全盘 grep"
   for pattern in "${PATTERNS[@]}"; do
-    hits="$(grep -rnEI "$pattern" . \
-      --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist \
-      --exclude='*.example' --exclude='check-secrets.sh' 2>/dev/null || true)"
+    grep_args=(--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist --exclude='*.example')
+    for scanner in "${SCANNERS[@]}"; do
+      grep_args+=("--exclude=$(basename "$scanner")")
+    done
+    hits="$(grep -rnEI "$pattern" . "${grep_args[@]}" 2>/dev/null || true)"
     if [ -n "$hits" ]; then
       echo "  FAIL  命中模式 [$pattern]："
       echo "$hits" | sed 's/^/        /'

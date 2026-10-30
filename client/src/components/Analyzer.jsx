@@ -19,6 +19,7 @@ export default function Analyzer({ grade, onBack }) {
   const [essay, setEssay] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [basis, setBasis] = useState(null);
+  const [precomputed, setPrecomputed] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [status, setStatus] = useState('idle'); // idle | loading | done | error
   const [error, setError] = useState('');
@@ -38,6 +39,13 @@ export default function Analyzer({ grade, onBack }) {
       const data = await analyzeEssay({
         grade,
         title: picked.title,
+        // 这一篇的类型（写人/记事/写景/状物/想象）。带上它，服务端才能从知识库
+        // 取到对应的文体视角卡——同一年级的两篇范文，看点本来就不一样。
+        // 粘贴进来的范文没有类型，留空即可。
+        topic: picked.topic ?? '',
+        // 内置范文的 id。带上它才可能命中预处理结果，于是点开就有招、
+        // 不用等模型；粘贴的范文没有 id，走实时拆解。
+        essayId: picked.id ?? '',
         essayText: picked.text,
         // 支架撤除的依据：册子越厚，这一篇越少直接标好，越多的招让孩子自己找
         collectedCount: loadBook().length,
@@ -48,6 +56,7 @@ export default function Analyzer({ grade, onBack }) {
       }
       setAnalysis(data.analysis);
       setBasis(data.basis);
+      setPrecomputed(data.precomputed === true);
       setAttempts(data.attempts);
       setStatus('done');
     } catch (submitted) {
@@ -180,7 +189,12 @@ export default function Analyzer({ grade, onBack }) {
               {/* 智能体现身的地方：它照什么拆的、核对结果如何。
                   不显示这段，前面那些能力就全藏在后台——孩子和评委
                   都只知道"结果出来了"，不知道"是谁照什么干出来的"。 */}
-              <BasisNote basis={basis} attempts={attempts} degraded={status === 'done' && !analysis.moves.length} />
+              <BasisNote
+                basis={basis}
+                attempts={attempts}
+                degraded={status === 'done' && !analysis.moves.length}
+                precomputed={precomputed}
+              />
 
               {activeMove && (
                 <div ref={dockRef}>
@@ -258,8 +272,12 @@ function Analyzing({ essayTitle }) {
  *
  * 两条都写得像人话，因为它的读者首先是孩子和家长；
  * 但同时每一条都是可核实的真话——不是营销话术。
+ *
+ * `precomputed` 这一支是 2026-10-30 加的：内置范文的拆解是提前算好的，
+ * 那句话必须和"这次当场拆的"分开说。都是逐字核对过的，但一个是现拆的、
+ * 一个是预算好的，混成一句就是冒充。
  */
-function BasisNote({ basis, attempts, degraded }) {
+function BasisNote({ basis, attempts, degraded, precomputed }) {
   if (!basis) return null;
 
   const corrected = attempts > 1;
@@ -271,6 +289,8 @@ function BasisNote({ basis, attempts, degraded }) {
       <p className="basis-line basis-check">
         {degraded ? (
           <>这次没能拆出招式，上面只有原文和分段</>
+        ) : precomputed ? (
+          <>这一篇的拆解是提前算好的，每一处引用的原句都逐字核对过</>
         ) : corrected ? (
           <>有一处引用的原句对不上，它自己改了一次才对上</>
         ) : (

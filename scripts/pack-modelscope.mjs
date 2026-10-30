@@ -15,7 +15,16 @@
  * 打完之后会打印一份清单和体积，上传前对着看一遍。
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,26 +35,52 @@ const out = join(root, '..', 'upload-modelscope');
 /** 绝对不能进上传包的东西。命中就中止，不自己判断"这个应该没关系"。 */
 const FORBIDDEN = ['.env', 'node_modules', '.git', '.joycode', '.oil-ui', 'dist.zip'];
 
-/** 递归算体积 */
-function sizeOf(target) {
-  const stat = statSync(target);
-  if (stat.isFile()) return stat.size;
-  let total = 0;
-  for (const entry of readdirSafe(target)) {
-    total += sizeOf(join(target, entry));
+/**
+ * 递归拷贝目录。
+ *
+ * **不用 `fs.cpSync(dir, dest, { recursive: true })`。** 2026-10-30 实测：
+ * 它在当前环境的沙箱里会把 node 进程直接杀掉——退出码 127、stdout/stderr
+ * 全空，连前面已经打印的日志之后的步骤都不执行。同一个沙箱里 `cp -r`
+ * 和单文件 `copyFileSync` 都正常，所以是 cpSync 内部的递归路径被拦，
+ * 不是权限或磁盘问题。自己走一遍目录树，行为也变得更可讲：
+ * 哪些文件会进上传包，代码里一眼看得见。
+ *
+ * 符号链接不跟：上传包里出现指回仓库的链接，等于把仓库结构带出去。
+ */
+function copyTree(from, to) {
+  mkdirSync(to, { recursive: true });
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    const source = join(from, entry.name);
+    const target = join(to, entry.name);
+    if (entry.isDirectory()) {
+      copyTree(source, target);
+    } else if (entry.isFile()) {
+      copyFileSync(source, target);
+    }
   }
-  return total;
+}
+
+/** 递归算体积，顺带数文件数——上传前要知道是"几个文件"还是"几千个文件" */
+function measure(target) {
+  const stat = statSync(target);
+  if (stat.isFile()) return { bytes: stat.size, files: 1 };
+  let bytes = 0;
+  let files = 0;
+  for (const entry of readdirSafe(target)) {
+    const part = measure(join(target, entry));
+    bytes += part.bytes;
+    files += part.files;
+  }
+  return { bytes, files };
 }
 
 function readdirSafe(dir) {
   try {
-    return readFs(dir);
+    return readdirSync(dir);
   } catch {
     return [];
   }
 }
-
-import { readdirSync as readFs } from 'node:fs';
 
 function human(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -65,14 +100,26 @@ if (existsSync(out)) rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 // ---- 2. 拷 server（源码 + 依赖清单，不带 .env 和 node_modules）----
-mkdirSync(join(out, 'server'), { recursive: true });
-cpSync(join(root, 'server/src'), join(out, 'server/src'), { recursive: true });
-cpSync(join(root, 'server/package.json'), join(out, 'server/package.json'));
-cpSync(join(root, 'server/package-lock.json'), join(out, 'server/package-lock.json'));
+copyTree(join(root, 'server/src'), join(out, 'server/src'));
+copyFileSync(join(root, 'server/package.json'), join(out, 'server/package.json'));
+copyFileSync(join(root, 'server/package-lock.json'), join(out, 'server/package-lock.json'));
+
+// ---- 2b. 预处理结果 ----
+// 内置范文提前算好的拆解。**没有它，上传到魔搭的版本每一篇范文都没招**——
+// 部署环境不配模型变量时 llmReady 为 false，全部走降级路径。
+// 这正是 2026-10-30 用户看到"所有的都没有招"的原因。
+// 只拷 precomputed 这一个子目录：server/data 下还有一份旧的 sqlite
+// （对话链路的遗留，链路已删），不该进上传包。
+const precomputedDir = join(root, 'server/data/precomputed');
+if (existsSync(precomputedDir)) {
+  copyTree(precomputedDir, join(out, 'server/data/precomputed'));
+} else {
+  console.warn('警告：server/data/precomputed 不存在，内置范文将只能走实时拆解。');
+  console.warn('      先跑 node --no-warnings server/scripts/precompute-analysis.mjs');
+}
 
 // ---- 3. 拷构建好的前端 ----
-mkdirSync(join(out, 'client'), { recursive: true });
-cpSync(distPath, join(out, 'client/dist'), { recursive: true });
+copyTree(distPath, join(out, 'client/dist'));
 
 // ---- 4. Dockerfile（魔搭版，端口 7860）----
 writeFileSync(
@@ -99,6 +146,13 @@ COPY client/dist ./client/dist
 # 必须绑 0.0.0.0，容器外才可达（server/src/index.js 已经这么做了）
 ENV PORT=7860
 ENV NODE_ENV=production
+
+# 超时预算写进镜像，不依赖代码默认值。
+# 2026-10-30 之前读者回应没有自己的预算，吃全局这一个，而代码默认是 30000——
+# 实测单次调用中位数约 31 秒、长尾过 60 秒，按 30 秒算一半被冤杀，
+# 孩子收到的是"模型没有连上"的兜底话术。现在两个任务都各自覆盖成 90 秒，
+# 这里再把兜底值显式钉死：平台的环境变量会盖过它，但忘了填时不该退化成 30 秒。
+ENV LLM_TIMEOUT_MS=60000
 EXPOSE 7860
 
 WORKDIR /app/server
@@ -185,14 +239,17 @@ const secretPattern = /sk-[A-Za-z0-9]{20,}|LLM_API_KEY=[^\s]+|Bearer [A-Za-z0-9.
   }
 })(out);
 
+const total = measure(out);
+
 console.log(`打包完成：${out}`);
-console.log(`总体积：${human(sizeOf(out))}`);
+console.log(`总体积：${human(total.bytes)}，共 ${total.files} 个文件`);
 console.log('');
 console.log('顶层内容：');
 for (const entry of readdirSafe(out)) {
   const full = join(out, entry);
   const kind = statSync(full).isDirectory() ? '目录' : '文件';
-  console.log(`  ${kind}  ${entry}  ${human(sizeOf(full))}`);
+  const part = measure(full);
+  console.log(`  ${kind}  ${entry}  ${human(part.bytes)}（${part.files} 个文件）`);
 }
 
 if (problems.length > 0) {

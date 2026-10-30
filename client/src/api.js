@@ -50,11 +50,24 @@ export function unlock(code) {
   return request('/access', { method: 'POST', body: JSON.stringify({ code }) });
 }
 
-/** 拆解一篇范文 */
-export function analyzeEssay({ grade, title, essayText }) {
+/**
+ * 拆解一篇范文。
+ *
+ * 2026-10-30 修掉一个静默丢字段的 bug：这里原先只解构
+ * `{ grade, title, essayText }`，而 Analyzer 传进来的 `collectedCount`
+ * 在解构那一刻就被丢掉了，请求体里从来没有它。服务端收到 undefined、
+ * 按 0 处理，于是**支架撤除从来没生效过**——册子攒到十招，拆解还是照旧
+ * 全标好，PPT 上写的那个创新点在真实链路里是死的。
+ * 教训：中间层转发的字段要和服务端契约一一对上，丢字段不报错，
+ * 它只是让功能安静地不存在。
+ *
+ * `essayId` 只有内置范文有。带上它才可能命中预处理结果（提前算好的拆解），
+ * 于是点开内置范文**不依赖模型在不在线**；粘贴的范文不带，走实时 agent。
+ */
+export function analyzeEssay({ grade, title, topic, essayId, essayText, collectedCount }) {
   return request('/v3/analyze', {
     method: 'POST',
-    body: JSON.stringify({ grade, title, essayText }),
+    body: JSON.stringify({ grade, title, topic, essayId, essayText, collectedCount }),
   });
 }
 

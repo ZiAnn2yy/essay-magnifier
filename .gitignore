@@ -13,11 +13,17 @@ dist/
 !.env.example
 
 # 运行时数据库（schema 由代码创建，不入库）
-server/data/
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
 *.sqlite-shm
+
+# 但 server/data/precomputed/ 是**要入库的**：内置范文提前算好的拆解。
+# 它花掉几十次真实模型调用、每次几分钟，是构建产物而不是运行时数据——
+# 挡在 git 外面意味着换台机器部署就没有它，产品退回到"每篇都要现场拆"。
+# 2026-10-30 发现这条规则把整个 server/data/ 都挡住了，差点让交付物缺数据。
+server/data/*
+!server/data/precomputed/
 
 # 系统杂项
 .DS_Store

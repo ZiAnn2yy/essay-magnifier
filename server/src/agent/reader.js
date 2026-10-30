@@ -21,6 +21,24 @@ import { detectCrisis, CRISIS_REPLY } from '../safety/crisis-rules.js';
 /** 读者不需要长篇：三四句话。但推理模型会先吃掉一批 token，仍按 8192 给。 */
 const READER_MAX_TOKENS = 8192;
 
+/**
+ * 读者回应的超时预算。
+ *
+ * 与拆解同因，且分布更宽：实测同一个任务跑 6 次，
+ * 4.2s / 9.3s / 30.6s / 31.4s / 40.8s / 60s+（超时），中位数就在 31 秒。
+ * 输出只有一百来字，耗时全花在推理上，**没有理由比拆解短**。
+ *
+ * 2026-10-30 之前这里没有覆盖，吃的是全局 LLM_TIMEOUT_MS。
+ * 而 model/client.js 的注释一直写着"调用方可以按任务覆盖：拆解要 30-50 秒，
+ * 读者回应只要几秒"——后半句是猜的，代码里也从来没有这个覆盖。
+ * 结果是评测 online-002 长期被记成"temperature=1 偶发失败，重跑即可"，
+ * 真因是稳定超时：按 30 秒算，上述 6 次里有 3 次会被砍。
+ *
+ * 给到 90 秒，与 ANALYZER_TIMEOUT_MS 同档：覆盖实测长尾，也留余量。
+ * 超时不重试那条在 model/client.js，两边配合才有效。
+ */
+export const READER_TIMEOUT_MS = 90000;
+
 /** 模型不可用时的兜底。不编造"读者感受"——那是假的，孩子会识破。 */
 const FALLBACK_REPLY =
   '我现在没办法好好读你写的东西（模型没有连上）。你写的这句先留着，晚点再给读者看。';
@@ -29,11 +47,26 @@ const FALLBACK_REPLY =
 const QUOTA_REPLY =
   '模型今天的额度用完了，所以我读不了你写的句子。你写的这句先存在这儿，额度回来了再看。';
 
-/** 上游是限流/额度问题时的兜底话术。判据是错误里带 429 或 budget。 */
+/**
+ * 上游故障分类。判据是错误消息里的特征串——上游没有给结构化错误码，
+ * 这是唯一可用的信号。与 analyze.js 的分类口径保持一致。
+ *
+ * 为什么值得分：超时是环境事件、额度是账户事件、upstream 是别的问题，
+ * 三者的处置完全不同。评测要能只说"这次不算"，就得先分得开。
+ */
+function classifyFailure(error) {
+  if (!error) return 'unconfigured';
+  const message = String(error.message ?? '');
+  if (/超时|timeout|abort/i.test(message)) return 'timeout';
+  if (/429|budget|quota|rate limit/i.test(message)) return 'quota';
+  return 'upstream';
+}
+
+/** 按故障类型取兜底话术。不编造"读者感受"——那是假的，孩子会识破。 */
 function fallbackFor(error) {
-  const message = String(error?.message ?? '');
-  const isQuota = message.includes('429') || /budget|quota|rate limit/i.test(message);
-  return { reply: isQuota ? QUOTA_REPLY : FALLBACK_REPLY, quota: isQuota };
+  const reason = classifyFailure(error);
+  const isQuota = reason === 'quota';
+  return { reply: isQuota ? QUOTA_REPLY : FALLBACK_REPLY, quota: isQuota, reason };
 }
 
 export async function buildReaderReply({ moveName, essayTitle, childText }) {
@@ -54,6 +87,7 @@ export async function buildReaderReply({ moveName, essayTitle, childText }) {
           },
         ],
         maxTokens: READER_MAX_TOKENS,
+        timeoutMs: READER_TIMEOUT_MS,
       });
 
       const reply = String(message?.content ?? '').trim();
@@ -64,10 +98,16 @@ export async function buildReaderReply({ moveName, essayTitle, childText }) {
     } catch (error) {
       logger.warn('LLM 读者回应失败，使用兜底话术', { reason: error.message });
       const fallback = fallbackFor(error);
-      return { crisis: false, reply: fallback.reply, degraded: true, quota: fallback.quota };
+      return {
+        crisis: false,
+        reply: fallback.reply,
+        degraded: true,
+        quota: fallback.quota,
+        reason: fallback.reason,
+      };
     }
   }
 
   const fallback = fallbackFor(null);
-  return { crisis: false, reply: fallback.reply, degraded: true, quota: false };
+  return { crisis: false, reply: fallback.reply, degraded: true, quota: false, reason: 'unconfigured' };
 }

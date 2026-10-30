@@ -17,6 +17,7 @@ import { logger } from '../lib/logger.js';
 import { config } from '../config.js';
 import { validateText } from '../lib/validate.js';
 import { buildAnalysis } from '../agent/analyze.js';
+import { GENRE_TOPICS } from '../agent/standards.js';
 
 const router = Router();
 
@@ -59,12 +60,42 @@ function validateTitle(value) {
   return value.trim();
 }
 
+/**
+ * 文体类型。白名单直接取知识库的 GENRE_TOPICS，不在这里另抄一份——
+ * 两份名单漂移过至少一次（深链参数名那次就是）。
+ *
+ * 允许不传：孩子粘贴进来的范文没有类型标注，检索会跳过文体视角卡，
+ * prompt 改成让模型自己判。非法值一律拒绝，不猜、不改写。
+ */
+function validateTopic(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || !GENRE_TOPICS.includes(value)) {
+    throw new ValidationError(`topic 必须是 ${GENRE_TOPICS.join(' / ')} 之一，或不传`);
+  }
+  return value;
+}
+
+/**
+ * 内置范文的 id。带上它才可能命中预处理结果（提前算好的拆解）。
+ *
+ * 白名单式校验而不是"非空字符串就行"：这个值会直接当查表键用，
+ * 而它同时是外部输入。长度和字符集卡死，异常形状一律当没传——
+ * 退回实时拆解，不报错（报错会让孩子点不开那一篇）。
+ */
+function validateEssayId(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || !/^[a-z0-9-]{1,64}$/.test(value)) return '';
+  return value;
+}
+
 router.post('/', async (req, res) => {
   try {
     const request = {
       grade: validateGrade(req.body?.grade),
       essayText: validateEssay(req.body?.essayText),
       title: validateTitle(req.body?.title),
+      topic: validateTopic(req.body?.topic),
+      essayId: validateEssayId(req.body?.essayId),
       collectedCount: validateCollectedCount(req.body?.collectedCount),
     };
 
@@ -77,7 +108,11 @@ router.post('/', async (req, res) => {
       analysis: result.analysis,
       // 自纠错用了几轮。1 = 一次通过；2 = 第一次被拒、带原因重试后通过。
       // 给前端和评测看：这个数字是"agent 真的在自我修正"的证据。
+      // 预处理结果里存的是它当时真正用掉的轮数，不是复制来的。
       attempts: result.attempts,
+      // true = 这次用的是提前算好的拆解。**前端必须显示它**：
+      // "提前算好并逐字核对过"和"这次 AI 现拆的"不是一回事，混为一体就是冒充。
+      precomputed: result.precomputed === true,
       // 这次拆解照的是什么依据。前端必须显示它——智能体不能只把活干完，
       // 还要让人看见它是照什么干的（规范§五 + 评分框架的知识库用途）。
       basis: result.basis,
