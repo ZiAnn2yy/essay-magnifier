@@ -172,9 +172,81 @@ def fading_conjunction():
     save(fig, "fading-conjunction")
 
 
+# ---------------------------------------------------------------- 图四：分析流程思维导图
+def analysis_mindmap():
+    fig, ax = plt.subplots(figsize=(13, 7.6))
+    ax.set_xlim(0, 13)
+    ax.set_ylim(0, 7.6)
+    ax.axis("off")
+
+    box(ax, 4.5, 3.35, 4.0, 0.9,
+        "怎么判断它真的教会了孩子写", INK, edge=INK, size=13.5, tcolor=WHITE)
+
+    branches = [
+        # (x, y, 标题, 要点, 颜色)
+        (0.25, 5.35, "① 教学法依据", "Crossref API 检索\n20+ 篇，逐条验到 DOI\n认知学徒制 / 支架理论\n兴趣个体化 / 过度辩护", ORANGE),
+        (4.75, 5.35, "② 知识库", "18 张教学设计卡\nstages 分 analyze / read\n按年级 + 文体两级检索\n二手转述全标 verified:false", YELLOW),
+        (9.25, 5.35, "③ 预处理", "79 篇过同一道闸\n逐字校验 520 处\n可续跑、加载时自愈\n命中即 0.04 秒", PINK),
+        (0.25, 1.05, "④ 评测", "33 条确定性断言\n不上 model-as-judge\n超时记 SKIP 不记 FAIL\n会抖的判据比没有更糟", PURPLE),
+        (4.75, 1.05, "⑤ 行为埋点", "11 个事件的漏斗\n属性白名单、不存原文\n内置 / 粘贴两条路径\n耗时差距即证据", SKY),
+        (9.25, 1.05, "⑥ 边界", "红线一：零个人信息\n红线二：Key 不下前端\n不冒充教材范文\n降级不编造", "#7bd389"),
+    ]
+    for x, y, title, body, color in branches:
+        # 标题不进 box 的 text——单独画才能上色加粗，否则会重复一遍
+        box(ax, x, y, 3.5, 1.75, body, WHITE, edge=color, size=10,
+            weight="normal", lw=2.2)
+        ax.text(x + 1.75, y + 1.75 - 0.26, title, ha="center", va="center",
+                fontsize=11.5, color=color, fontweight="bold")
+
+    # 中心到六个分支
+    for x, y, *_ in branches:
+        cx, cy = x + 1.75, y + 0.875
+        arrow(ax, 6.5, 3.8, cx, cy, color=SOFT, lw=1.4, ls=":")
+
+    save(fig, "analysis-mindmap")
+
+
+# ---------------------------------------------------------------- 图五：两条路径的耗时
+def latency_chart():
+    """实测数据，不是示意。日志轴——0.04 秒和 30 秒差三个数量级，线性轴上后者看不见。"""
+    fig, ax = plt.subplots(figsize=(9.5, 3.6))
+
+    labels = ["内置范文\n命中预处理", "粘贴一篇\n实时链路"]
+    lows = [0.04, 25.0]
+    highs = [0.05, 60.0]
+    colors = [ORANGE, PINK]
+    ypos = [1, 0]
+
+    for y, lo, hi, color in zip(ypos, lows, highs, colors):
+        ax.barh(y, hi - lo, left=lo, height=0.4, color=color,
+                edgecolor=INK, linewidth=2.0, zorder=3)
+        # 数值贴在条的右端外侧，不塞进条里——0.04 秒那条太窄，塞进去就看不见
+        ax.text(hi * 1.25, y, f"{lo:g}–{hi:g} 秒", ha="left", va="center",
+                fontsize=12, color=INK, fontweight="bold", zorder=4)
+
+    ax.set_xscale("log")
+    ax.set_xlim(0.012, 900)
+    ax.set_yticks(ypos)
+    ax.set_yticklabels(labels, fontsize=11.5)
+    ax.set_xlabel("一次范文拆解的耗时（秒，对数轴）", fontsize=11)
+    ax.grid(axis="x", which="both", color="#dbeaf3", linewidth=0.8, zorder=0)
+    ax.set_axisbelow(True)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(INK)
+    ax.tick_params(colors=SOFT)
+
+    ax.set_title("核心路径已经摘离外部依赖，粘贴路径还没有",
+                 fontsize=13, color=INK, fontweight="bold", pad=14)
+
+    save(fig, "latency-paths")
+
+
 if __name__ == "__main__":
     print("生成机制图 →", OUT)
     product_flow()
     server_pipeline()
     fading_conjunction()
+    analysis_mindmap()
+    latency_chart()
     print("完成")
