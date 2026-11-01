@@ -135,6 +135,77 @@ export function favouriteMove(entries) {
   return best;
 }
 
+/**
+ * 头衔。按"**用自己的话接过的篇数**"算。
+ *
+ * 这个数和支架撤除的 countOwnEssays 是**同一个**，别再另算一套——
+ * 两处口径分叉比没有更糟（决策 51）。
+ *
+ * 为什么不按技巧种类：招式名没有分类法。257 个名字对应约 260 招，
+ * 存在「把快动作拆成小步骤写」「把动作放慢成小步骤写」「把动作拆成小步骤写」
+ * 这种同一技术三个字符串的情况，数它等于数字符串。而篇数有界（≤79）、
+ * 刷不动（每篇走完整个闭环才计一次）、且真实。
+ *
+ * 阈值是产品自拟的教学判断，不是某种量表——名字要说的是"你已经走到这儿了"，
+ * 不是"你得了多少分"。别加进度条：进度条暗示有个终点，而这个产品没有。
+ */
+const TITLE_TIERS = [
+  { min: 10, label: '停不下来的写手' },
+  { min: 6, label: '有自己的招式的人' },
+  { min: 3, label: '越写越顺的人' },
+  { min: 1, label: '敢写自己的人' },
+  { min: 0, label: '写作初学者' },
+];
+
+export function titleFor(entries) {
+  const essays = countOwnEssays(entries);
+  return TITLE_TIERS.find((tier) => essays >= tier.min).label;
+}
+
+/**
+ * 在几种文体里写过。广度这一轴，和深度（同一招练了几次）分开。
+ *
+ * 文体来自条目里的 `topic`（写人/记事/写景/状物/想象），最多 5 种。
+ * 粘贴进来的范文没有类型，那些篇目不计——不知道的事不猜。
+ * 旧数据没有这个字段时返回 0，调用方据此不显示这一行，不显示成"0 种"。
+ *
+ * @param {Array} entries 册子条目
+ * @returns {number} 文体种类数
+ */
+export function countGenres(entries) {
+  const genres = new Set();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (entry?.from === 'own' && entry.topic) genres.add(entry.topic);
+  }
+  return genres.size;
+}
+
+/**
+ * 证据墙：按招式名把自己的句子分组。
+ *
+ * **句子就是证据，零判定。** 不评分、不排名、不说好不好、不和朋友比——
+ * 追加任何评价都会让孩子追评价而不是追写法（决策 42：激励是证据不是奖励）。
+ * 把它按招式分组，是为了让他看见"这一招我用过三次，这是那三次"——
+ * 从"我写过一些句子"变成"我在练这一招"。
+ *
+ * @param {Array} entries 册子条目
+ * @returns {Array<{name: string, sentences: Array}>} 最近用过的招式在前
+ */
+export function ownSentencesByMove(entries) {
+  const groups = new Map();
+  const list = Array.isArray(entries) ? entries : [];
+  // 倒着走，让最近用过的招式排在最前面——册子是给孩子回头看自己的，
+  // 不是档案馆
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const entry = list[i];
+    if (entry?.from !== 'own' || !entry.mySentence) continue;
+    const name = entry.name || '自己用的一招';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(entry);
+  }
+  return [...groups].map(([name, sentences]) => ({ name, sentences }));
+}
+
 export function loadBook() {
   return read();
 }

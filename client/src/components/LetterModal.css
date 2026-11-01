@@ -53,6 +53,8 @@
   margin-bottom: 12px;
 }
 
+/* ink 底白字 12.29:1。原来用粉底白字只有 2.91:1——给 8-12 岁孩子的字
+   不能按成人后台的"够清楚"标准定。 */
 .lm-label {
   display: inline-block;
   padding: 3px 11px;
@@ -61,7 +63,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--white);
-  background: var(--pink);
+  background: var(--ink);
   border: 2px solid var(--ink);
   border-radius: 999px;
 }

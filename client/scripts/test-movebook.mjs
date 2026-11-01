@@ -20,6 +20,9 @@ import {
   countLearnedMoves,
   countOwnEssays,
   favouriteMove,
+  titleFor,
+  countGenres,
+  ownSentencesByMove,
 } from '../src/lib/moveBook.js';
 
 let failed = 0;
@@ -172,6 +175,91 @@ check(
 );
 
 check('favouriteMove 空册子返回 null', favouriteMove([]), null);
+
+// ---- 头衔：按篇数，不按技巧种类 ----
+// 阈值是产品自拟的教学判断。这几条锁的是"头衔跟着动过的篇目走"，
+// 以及"学来的招再多也不涨头衔"——否则孩子会为了头衔去点收藏而不是去写。
+check('头衔 0 篇 → 写作初学者', titleFor([]), '写作初学者');
+check(
+  '头衔 1 篇 → 敢写自己的人',
+  titleFor([{ from: 'own', essayId: 'a' }]),
+  '敢写自己的人',
+);
+check(
+  '头衔 3 篇 → 越写越顺的人',
+  titleFor([{ from: 'own', essayId: 'a' }, { from: 'own', essayId: 'b' }, { from: 'own', essayId: 'c' }]),
+  '越写越顺的人',
+);
+check(
+  '头衔 6 篇 → 有自己的招式的人',
+  titleFor(Array.from({ length: 6 }, (_, i) => ({ from: 'own', essayId: `e${i}` }))),
+  '有自己的招式的人',
+);
+check(
+  '头衔 10 篇 → 停不下来的写手',
+  titleFor(Array.from({ length: 10 }, (_, i) => ({ from: 'own', essayId: `e${i}` }))),
+  '停不下来的写手',
+);
+check(
+  '头衔只数 from=own：学来 20 招也还是初学者',
+  titleFor(Array.from({ length: 20 }, (_, i) => ({ from: 'essay', essayId: `e${i}`, moveId: `m${i}` }))),
+  '写作初学者',
+);
+check(
+  '头衔按篇目去重：同一篇写十句算一篇',
+  titleFor(Array.from({ length: 10 }, (_, i) => ({ from: 'own', essayId: 'same', moveId: `m${i}` }))),
+  '敢写自己的人',
+);
+
+// ---- 文体广度：只数带 topic 的 own 条目 ----
+check('文体广度 空册子 0', countGenres([]), 0);
+check(
+  '文体广度按 topic 去重',
+  countGenres([
+    { from: 'own', essayId: 'a', topic: '写人' },
+    { from: 'own', essayId: 'b', topic: '写人' },
+    { from: 'own', essayId: 'c', topic: '记事' },
+  ]),
+  2,
+);
+check(
+  '文体广度只数 from=own',
+  countGenres([
+    { from: 'essay', essayId: 'a', topic: '写人' },
+    { from: 'spotted', essayId: 'b', topic: '写景' },
+  ]),
+  0,
+);
+check(
+  '文体广度没有 topic 的条目不计（粘贴篇没有类型，不猜）',
+  countGenres([{ from: 'own', essayId: 'a', topic: '' }, { from: 'own', essayId: 'b' }]),
+  0,
+);
+
+// ---- 证据墙：按招式分组，最近用过的在前，零判定 ----
+const wallEntries = [
+  { from: 'own', essayId: 'e1', moveId: 'm1', name: '把动作放慢写', mySentence: '第一句', at: 1 },
+  { from: 'own', essayId: 'e2', moveId: 'm1', name: '把动作放慢写', mySentence: '第二句', at: 2 },
+  { from: 'own', essayId: 'e3', moveId: 'm2', name: '用味道开头', mySentence: '第三句', at: 3 },
+  { from: 'essay', essayId: 'e1', moveId: 'm9', name: '学来的招', at: 4 },
+  { from: 'spotted', essayId: 'e1', moveId: 'spot-x', name: '看出来的招', at: 5 },
+];
+const wall = ownSentencesByMove(wallEntries);
+check('证据墙组数 = 用过的招式种数', wall.length, 2);
+check('证据墙最近用过的招式在前', wall[0].name, '用味道开头');
+check(
+  '证据墙同组句子齐全',
+  ownSentencesByMove(wallEntries).find((g) => g.name === '把动作放慢写').sentences.length,
+  2,
+);
+check('证据墙不含学来的招', wall.some((g) => g.name === '学来的招'), false);
+check('证据墙不含看出来的招', wall.some((g) => g.name === '看出来的招'), false);
+check('证据墙空册子返回空数组', ownSentencesByMove([]).length, 0);
+check(
+  '证据墙没有 mySentence 的 own 条目不进场（防御脏数据）',
+  ownSentencesByMove([{ from: 'own', essayId: 'a', moveId: 'm1', name: 'x', at: 1 }]).length,
+  0,
+);
 
 console.log(
   failed === 0

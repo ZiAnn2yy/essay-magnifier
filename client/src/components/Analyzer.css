@@ -36,9 +36,12 @@
   -webkit-text-stroke: 0.7px currentColor;
 }
 
-/* 回信入口，和册子按钮并列。用 --pink 而不是册子的 --yellow：
-   顶栏这两个按钮是"两种东西"——黄的是孩子自己攒的，粉的是别人给他的，
-   颜色分开，孩子不用读字就知道点哪个。 */
+/* 回信入口，和册子按钮并列。
+   用 --ink 底白字而不是粉底白字：粉底配白字只有 2.91:1，配 ink 字也只有
+   4.22:1，都过不了 4.5:1——而这是给 8-12 岁孩子看的字。
+   ink 底白字 12.29:1，而且它正好成了顶栏最重的一个：
+   回信是整个产品唯一的动机引擎，它值得被第一眼看见。
+   和册子按钮的区分靠明暗（深 vs 浅的黄），不靠色相——扫一眼就知道点哪个。 */
 .an-letters {
   margin-left: auto;
   padding: 7px 14px;
@@ -46,7 +49,7 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--white);
-  background: var(--pink);
+  background: var(--ink);
   border: 2.5px solid var(--ink);
   border-radius: 999px;
   box-shadow: var(--lift-sm);
@@ -239,14 +242,107 @@
   right: 18px;
   bottom: 18px;
   z-index: 20;
-  width: min(320px, calc(100vw - 36px));
-  max-height: 60vh;
+  width: min(360px, calc(100vw - 36px));
+  max-height: 74vh;
   overflow-y: auto;
   padding: 14px 16px 16px;
   background: var(--white);
   border: 3px solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--lift-lg);
+}
+
+/* 头衔。册子里最该被看见的一行——孩子打开册子第一眼看到的是
+   "我现在是什么"，不是"我收过什么"。
+   用 --orange 是因为它是这个产品里唯一表示"你走到了这儿"的颜色
+   （荧光笔、当前格都是它），不引新色。 */
+.an-book-title {
+  margin-bottom: 12px;
+  padding: 11px 13px 12px;
+  background: var(--sky);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+}
+
+.an-book-title-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+.an-book-title-name {
+  margin: 2px 0 0;
+  font-family: var(--font-round);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+/* 广度那一轴，压小压灰——它是补充信息，不该和头衔抢 */
+.an-book-title-genres {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.an-wall {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--ink);
+}
+
+/* 两节共用的小标题。不放在卡片里——节标题该比内容安静，
+   放进卡片就和条目本身一样重了 */
+.an-wall-head {
+  margin: 0 0 8px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.an-wall-group + .an-wall-group {
+  margin-top: 11px;
+}
+
+.an-wall-move {
+  margin: 0 0 4px;
+  font-family: var(--font-round);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* 句子就是证据：左边一道厚边，像便利贴贴在墙上。
+   不打分、不排名、不加图标——追加任何评价都会让孩子追评价而不是追写法 */
+.an-wall-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.an-wall-list li {
+  padding: 7px 10px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+  background: var(--yellow);
+  border-left: 5px solid var(--orange);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+.an-book-moves {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--ink);
 }
 
 .an-book-head {

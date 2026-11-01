@@ -20,6 +20,9 @@
   margin-bottom: 7px;
 }
 
+/* 眉标改 ink 底白字（12.29:1）。原来紫底白字只有 3.75:1，紫底配 ink 字
+   也只有 3.28:1——紫色这个色相里没有能过 4.5:1 的组合，所以身份不靠它扛，
+   靠左边那道 9px 紫厚边（见文件头）。 */
 .challenge-kicker {
   display: inline-block;
   padding: 2px 9px;
@@ -28,7 +31,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--white);
-  background: var(--purple);
+  background: var(--ink);
   border: 2px solid var(--ink);
   border-radius: 999px;
 }

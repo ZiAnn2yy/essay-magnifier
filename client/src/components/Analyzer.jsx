@@ -13,6 +13,9 @@ import {
   countLearnedMoves,
   countOwnEssays,
   favouriteMove,
+  titleFor,
+  countGenres,
+  ownSentencesByMove,
   hasEntry,
 } from '../lib/moveBook.js';
 import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
@@ -169,6 +172,9 @@ export default function Analyzer({ grade, onBack }) {
         essayId: essay.id,
         from: 'own',
         mySentence: text,
+        // 文体带进条目，"在几种文体里写过"这一轴靠它。粘贴的范文没有类型，
+        // 留空即可——不知道的事不猜，那种篇目不计入广度
+        topic: essay.topic ?? '',
       }),
     );
     track('move_collect', { grade, from: 'own' });
@@ -489,6 +495,11 @@ function MoveBook({ entries, onClose }) {
   const written = entries.filter((entry) => entry.from === 'own');
   const spotted = entries.filter((entry) => entry.from === 'spotted');
   const favourite = favouriteMove(entries);
+  const title = titleFor(entries);
+  const genres = countGenres(entries);
+  // 证据墙只收自己的句子；剩下的是收进册子的招（学来的 + 看出来的）
+  const wall = ownSentencesByMove(entries);
+  const moves = entries.filter((entry) => entry.from !== 'own');
 
   return (
     <div className="an-book-panel" role="dialog" aria-label="我的招式册子">
@@ -498,6 +509,19 @@ function MoveBook({ entries, onClose }) {
           关上
         </button>
       </header>
+
+      {/* 头衔。按"用自己的话接过的篇数"算，和支架撤除共用同一个数
+          （countOwnEssays）——别再另算一套。不配进度条：进度条暗示有个终点，
+          而这个产品没有。 */}
+      <div className="an-book-title">
+        <p className="an-book-title-label">你现在是</p>
+        <p className="an-book-title-name">{title}</p>
+        {genres > 0 && (
+          <p className="an-book-title-genres">
+            在 <strong>{genres}</strong> 种文体里写过
+          </p>
+        )}
+      </div>
 
       <p className="an-book-tally">
         <span>
@@ -523,11 +547,37 @@ function MoveBook({ entries, onClose }) {
       {entries.length === 0 ? (
         <p className="an-book-empty">还空着。拆一篇范文，点「收进册子」。</p>
       ) : (
-        <ul className="an-book-list">
-          {entries.map((entry) => (
-            <BookEntry key={`${entry.moveId}-${entry.from}-${entry.at}`} entry={entry} />
-          ))}
-        </ul>
+        <>
+          {/* 证据墙：自己的句子按招式分组摆在这儿。
+              **零判定**——不评分不排名不说好不好（决策 42：激励是证据不是奖励）。
+              分组是为了让他看见"这一招我用过三次，这是那三次"。 */}
+          {wall.length > 0 && (
+            <section className="an-wall">
+              <h4 className="an-wall-head">你用自己的话写过的</h4>
+              {wall.map((group) => (
+                <div className="an-wall-group" key={group.name}>
+                  <p className="an-wall-move">用「{group.name}」</p>
+                  <ul className="an-wall-list">
+                    {group.sentences.map((entry) => (
+                      <li key={`${entry.essayId}-${entry.moveId}-${entry.at}`}>
+                        {entry.mySentence}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          )}
+
+          <section className="an-book-moves">
+            <h4 className="an-wall-head">收进册子的招</h4>
+            <ul className="an-book-list">
+              {moves.map((entry) => (
+                <BookEntry key={`${entry.moveId}-${entry.from}-${entry.at}`} entry={entry} />
+              ))}
+            </ul>
+          </section>
+        </>
       )}
     </div>
   );
