@@ -8,8 +8,8 @@ import { track } from '../lib/track.js';
  *
  * 这是产品的闭环——拆解不是终点，"用这一招写一句自己的"才是。
  * AI 在这里的身份是**读者**不是老师：它回应孩子刚写出的句子，
- * 不替他决定下一句写什么。这条边界由服务端 isReaderQuestion 兜底，
- * 也写进了 system prompt。
+ * 不替他决定下一句写什么。这条边界写在服务端 READER prompt 里
+ * （"不改他的句子，不告诉他下一句该写什么"）。
  *
  * 等 7 秒的那一下不做成转圈：按钮变"读者在读…"，并把等待说出来。
  * 真模型首 token 6.3s，藏是藏不住的，不如让它有性格。
@@ -19,8 +19,23 @@ import { track } from '../lib/track.js';
  *     并且刚刚有人读完了它。
  *   - **动态效果**：那句飞进顶栏的作文本，计数当场跳。
  *     由调用方传 onKeep 进来做，因为动画要用到顶栏那个按钮的位置。
+ *
+ * ## 回信为什么不在 dock 里展开
+ *
+ * 用户 10-30 说回信太小读着费劲，10-31 问定：回信到达时**先放大到屏幕中央**，
+ * 右上角一个 × 收回原位；**收回后 dock 里不留信纸**，顶栏出一个回信入口，
+ * 多封能翻看。所以这里只留一个紧凑的「再看这封回信」——不是信纸，是个入口；
+ * 信本身归 LetterModal 管。
  */
-export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
+export default function TaskDock({
+  move,
+  grade,
+  essayTitle,
+  onKeep,
+  kept,
+  onLetter,
+  onReopenLetter,
+}) {
   const [text, setText] = useState('');
   const [reply, setReply] = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
@@ -52,6 +67,14 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
         grade,
         degraded: data.degraded === true,
         ms: Date.now() - sentAt,
+      });
+      // 交给上层存起来并弹出放大镜。这里不渲染信纸——见文件头说明
+      onLetter?.({
+        moveName: move.name,
+        essayTitle,
+        mySentence: own,
+        reply: data.reply,
+        degraded: data.degraded === true,
       });
     } catch (submitted) {
       setError(submitted.message);
@@ -106,18 +129,11 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
             这一句是你自己写出来的。它现在有读者了。
           </p>
 
-          {/* 读者的回应装进一封信里。
-              不是加装饰——是把它和"作业批改"在视觉上分开：
-              左边是范文、中间是招式、这里是有人写完信放在这儿。
-              信头、信身、落款三件套，落款不写具象角色（决策 22：不做 mascot），
-              只写"一直在读你的人"，人格的温暖从文字来，不从形象来。 */}
-          <article className="letter">
-            <header className="letter-head">
-              <span className="letter-label">来自读者的回信</span>
-            </header>
-            <p className="letter-body">{reply}</p>
-            <footer className="letter-sign">—— 一直在读你的人</footer>
-          </article>
+          {/* 回信本身已经放大到屏幕中央读过了（LetterModal）。这里不留信纸，
+              只留一个入口——用户 10-31 问定的。 */}
+          <button type="button" className="dock-reopen" onClick={() => onReopenLetter?.()}>
+            再看这封回信
+          </button>
 
           <button
             type="button"

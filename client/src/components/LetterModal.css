@@ -1,0 +1,271 @@
+/**
+ * 回信放大镜。
+ *
+ * 设计判断：**主角是信的正文**，其余全部安静。所以遮罩用 --ink 的 55%
+ * （留在锁定色板里，不用纯黑），卡片不加渐变不加光晕，翻页控件压在底部
+ * 且只在多封时出现——空白的导航条会让人以为还有别的东西没找到。
+ *
+ * 尺度：1440 下是居中卡片，860px 以下直接全屏（跟 Analyzer.css 的断点走）。
+ * 长信能滚——实测回信最长约 400 字，放大后可能超过视口高度。
+ */
+
+.lm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100; /* 置顶卡 10、册子面板 20、飞字飞牌 55-60，模态必须压在全部之上 */
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(23, 56, 77, 0.55);
+  /* 遮罩自己也淡入，和卡片的长放大同步 */
+  animation: lm-fade 0.3s ease-out;
+}
+
+@keyframes lm-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lm-card {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: min(86vh, 900px);
+  padding: 14px 16px 16px;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-lg);
+  box-shadow: var(--lift-lg);
+  /* transform 和 opacity 由 JS 的 FLIP 直接写，不在这里设 transition——
+     进场和出场要的是不同的曲线（进场过冲、出场收敛） */
+}
+
+.lm-card:focus-visible {
+  outline: none;
+}
+
+.lm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+  margin-bottom: 12px;
+}
+
+.lm-label {
+  display: inline-block;
+  padding: 3px 11px;
+  font-family: var(--font-round);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--white);
+  background: var(--pink);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+/* 右上角唯一的控件。方而不是圆——圆角胶囊在这个产品里是"开关/入口"
+   （册子按钮、返回按钮都是胶囊），关闭要做成一眼不同的东西 */
+.lm-close {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  font-family: var(--font-round);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-sm);
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.lm-close:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.lm-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* 滚动条和卡片之间留口气，长信滚到底时线不会贴着边框 */
+  padding-right: 4px;
+}
+
+/**
+ * 放大后的信纸。
+ *
+ * --letter-line / --letter-size 是**一对**，必须同步改。原来横线间距写死 28px、
+ * 字号写死 15px，容器一放大两者就脱钩，格线突然变密。现在都由变量驱动。
+ * 46/24 ≈ 1.92，和小信纸的 28/15 ≈ 1.87 接近——同一张纸的纹理，只是放大了。
+ */
+.lm-letter {
+  --letter-line: 46px;
+  --letter-size: 24px;
+  padding: 18px 22px 14px;
+}
+
+.lm-mine {
+  margin-top: 16px;
+  padding: 11px 14px;
+  background: var(--sky);
+  border: 2.5px dashed var(--ink);
+  border-radius: var(--r-md);
+}
+
+.lm-mine-label {
+  display: inline-block;
+  margin-bottom: 5px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+.lm-mine-text {
+  margin: 0;
+  font-family: var(--font-round);
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.lm-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: none;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--ink);
+}
+
+.lm-nav-btn {
+  padding: 7px 14px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.lm-nav-btn:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.lm-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  box-shadow: none;
+}
+
+.lm-nav-count {
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* 窄屏直接全屏——居中的小卡片在手机上读一封 400 字的信是折磨 */
+@media (max-width: 860px) {
+  .lm-backdrop {
+    padding: 0;
+  }
+
+  .lm-card {
+    width: 100%;
+    max-height: 100vh;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+  }
+}
+
+/* 关的只是缩放过渡——模态本身是信息不是装饰，要读信 */
+html.motion-off .lm-backdrop {
+  animation: none;
+}
+
+/* ==========================================================================
+   信纸。整份样式只此一处——TaskDock 不再渲染信，放大镜是它唯一的家。
+   ========================================================================== */
+
+/**
+ * 一封信，不是一条消息。视觉上把它和"作业批改"分开：左边是范文、
+ * 中间是招式、这里是有人写完放在这儿的。所以用信纸而不用气泡——
+ * 淡黄底、横线、行高让每一行正好落在一条格线上，
+ * 读起来像手写日记本，也就有了"有人一笔一划写下来"的分量。
+ *
+ * 不引新字体（决策：不加依赖，且这项目对包体积是算过账的），
+ * 质感全靠布局和颜色给。
+ *
+ * **--letter-line 和 --letter-size 是一对，必须同步改。**
+ */
+.letter {
+  --letter-line: 28px;
+  --letter-size: 15px;
+  padding: 12px 15px 10px;
+  background-color: #fffef0;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift-sm);
+  /* 信是"展开"的：从对折的状态打开，过冲一下再落定 */
+  animation: letter-unfold 0.52s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes letter-unfold {
+  from { transform: scaleY(0.55) translateY(-8px); opacity: 0; }
+  to { transform: scaleY(1) translateY(0); opacity: 1; }
+}
+
+.letter-body {
+  margin: 0;
+  font-family: var(--font-round);
+  /* 字号和行高都来自上面那一对变量，放大镜只改那一对 */
+  font-size: var(--letter-size);
+  line-height: var(--letter-line);
+  color: var(--ink);
+  white-space: pre-wrap;
+  /* 横线画在正文自己身上，不画在卡片上。卡片有 padding，画在卡片上时
+     第一行的行盒顶在 padding 之下，每行都压在两条线中间（固定偏移约半个行高）。
+     画在 <p> 上时行盒从内容盒顶部开始排，线正好落在每行底部，跟真横格纸一致。 */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--letter-line) - 1px),
+    rgba(23, 56, 77, 0.14) calc(var(--letter-line) - 1px),
+    rgba(23, 56, 77, 0.14) var(--letter-line)
+  );
+}
+
+/* 落款右对齐，像信末的署名。不写具象角色（决策 22：不做 mascot）——
+   只写"一直在读你的人"，人格的温暖从文字来，不从形象来 */
+.letter-sign {
+  margin-top: 8px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+html.motion-off .letter {
+  animation: none;
+}

@@ -36,8 +36,30 @@
   -webkit-text-stroke: 0.7px currentColor;
 }
 
-.an-book {
+/* 回信入口，和册子按钮并列。用 --pink 而不是册子的 --yellow：
+   顶栏这两个按钮是"两种东西"——黄的是孩子自己攒的，粉的是别人给他的，
+   颜色分开，孩子不用读字就知道点哪个。 */
+.an-letters {
   margin-left: auto;
+  padding: 7px 14px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--pink);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.an-letters:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* 册子按钮自己靠右——回信按钮占了 margin-left:auto 的位置 */
+.an-book {
   padding: 7px 14px;
   font-family: var(--font-round);
   font-size: 13px;

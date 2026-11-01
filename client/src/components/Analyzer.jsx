@@ -17,6 +17,8 @@ import {
 } from '../lib/moveBook.js';
 import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
 import { track } from '../lib/track.js';
+import { loadLetters, addLetter } from '../lib/letterStore.js';
+import LetterModal from './LetterModal.jsx';
 
 /**
  * 粘贴进来的范文没有 id，而册子的键要靠 essayId 区分篇目。
@@ -48,8 +50,14 @@ export default function Analyzer({ grade, onBack }) {
   const [activeMoveId, setActiveMoveId] = useState(null);
   const [book, setBook] = useState(loadBook);
   const [bookOpen, setBookOpen] = useState(false);
+  // 回信。存在本机（letterStore），模态的开关和当前看第几封在这里——
+  // 它要同时服务两个入口：TaskDock 的"再看这封回信"和顶栏的回信按钮
+  const [letters, setLetters] = useState(loadLetters);
+  const [letterOpen, setLetterOpen] = useState(false);
+  const [letterIndex, setLetterIndex] = useState(0);
   const dockRef = useRef(null);
   const bookRef = useRef(null);
+  const letterAnchorRef = useRef(null);
 
   const runAnalyze = useCallback(async (pickedEssay) => {
     // 粘贴篇在这里补一个真 id——见 withEssayId 的说明
@@ -198,10 +206,39 @@ export default function Analyzer({ grade, onBack }) {
     track('spotted_skipped', { grade });
   }
 
+  /**
+   * 收到一封新回信：存起来，然后**立刻放大到屏幕中央**。
+   *
+   * 为什么是收到就放大、而不是等孩子去点：用户 10-30 的原话是
+   * "回信出结果的时候，先放大到屏幕中间"。回信是整个产品唯一的动机引擎，
+   * 它值得一个被认真读的场合——让它悄悄出现在角落里，等于把它降级成一条通知。
+   */
+  function handleLetter(entry) {
+    const next = addLetter(entry);
+    setLetters(next);
+    setLetterIndex(next.length - 1);
+    setLetterOpen(true);
+  }
+
+  /** 从顶栏或 dock 打开回信：看最新的一封。 */
+  function openLatestLetter() {
+    if (letters.length === 0) return;
+    setLetterIndex(letters.length - 1);
+    setLetterOpen(true);
+  }
+
   if (!essay) {
     return (
       <main className="an">
-        <TopBar grade={grade} onBack={onBack} bookCount={book.length} onOpenBook={() => setBookOpen(true)} />
+        <TopBar
+          grade={grade}
+          onBack={onBack}
+          bookCount={book.length}
+          onOpenBook={() => setBookOpen(true)}
+          letterCount={letters.length}
+          onOpenLetter={openLatestLetter}
+          letterRef={letterAnchorRef}
+        />
         <div className="an-body an-body-single">
           <EssayPicker grade={grade} onPick={runAnalyze} onBack={onBack} />
         </div>
@@ -227,6 +264,9 @@ export default function Analyzer({ grade, onBack }) {
         bookCount={book.length}
         onOpenBook={() => setBookOpen(true)}
         bookRef={bookRef}
+        letterCount={letters.length}
+        onOpenLetter={openLatestLetter}
+        letterRef={letterAnchorRef}
       />
 
       <div className="an-body">
@@ -302,6 +342,8 @@ export default function Analyzer({ grade, onBack }) {
                     essayTitle={essay.title}
                     onKeep={handleKeepOwn}
                     kept={keptOwn}
+                    onLetter={handleLetter}
+                    onReopenLetter={openLatestLetter}
                   />
                 </div>
               )}
@@ -311,17 +353,49 @@ export default function Analyzer({ grade, onBack }) {
       </div>
 
       {bookOpen && <MoveBook entries={book} onClose={() => setBookOpen(false)} />}
+
+      <LetterModal
+        letters={letters}
+        index={letterIndex}
+        open={letterOpen}
+        onIndexChange={setLetterIndex}
+        onClose={() => setLetterOpen(false)}
+        sourceRef={letterAnchorRef}
+      />
     </main>
   );
 }
 
-function TopBar({ grade, onBack, backLabel = '← 换年级', bookCount, onOpenBook, bookRef }) {
+function TopBar({
+  grade,
+  onBack,
+  backLabel = '← 换年级',
+  bookCount,
+  onOpenBook,
+  bookRef,
+  letterCount,
+  onOpenLetter,
+  letterRef,
+}) {
   return (
     <header className="an-top">
       <button type="button" className="an-back" onClick={onBack}>
         {backLabel}
       </button>
       <span className="an-grade">{grade} 年级</span>
+      {/* 回信入口和册子按钮并列。收回信纸之后，这里是回信唯一的常驻入口——
+          没有它，"收回"就成了"再也找不到"。
+          一封信都没有时不渲染：空入口会让人以为有东西没找到。 */}
+      {letterCount > 0 && (
+        <button
+          type="button"
+          className="an-letters"
+          onClick={onOpenLetter}
+          ref={letterRef}
+        >
+          读者的回信 · {letterCount}
+        </button>
+      )}
       <button type="button" className="an-book" onClick={onOpenBook} ref={bookRef}>
         我的册子 · {bookCount}
       </button>
