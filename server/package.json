@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "教育陪伴智能体服务端",
+  "description": "范文放大镜服务端——范文拆解、读者回应、支架撤除、行为埋点",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "node --no-warnings src/index.js",
     "dev": "node --no-warnings --watch src/index.js"
