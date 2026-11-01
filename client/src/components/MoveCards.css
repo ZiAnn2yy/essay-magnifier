@@ -16,7 +16,10 @@
 .moves-list {
   list-style: none;
   margin: 0;
-  padding: 6px 4px 10px 0;
+  /* 左边那 10px 是给旋转留的：牌带 ±1.8° 扇形，旋转后包围盒比原图宽，
+     左 padding 为 0 时左缘和编号章会被容器切掉（窄屏下尤其明显，
+     用户在 560px 抓到的）。 */
+  padding: 6px 10px 10px 0;
   display: flex;
   flex-direction: column;
   /* 负间距让牌互相压着：一沓纸，不是一排并列的卡片 */
