@@ -143,6 +143,28 @@ export default function Analyzer({ grade, onBack }) {
     });
   }
 
+  /**
+   * 换一招：切到下一篇，不到处滚。
+   *
+   * 为什么需要它：卡片本身不可点，「用这一招」是唯一入口；而一旦某张置顶
+   * （decision 44 的 sticky），其它牌的按钮就被它压着，得滚过它才点得到。
+   * 用户 11-01 演示时抓到的。
+   *
+   * 循环而不是"取消置顶"：取消置顶会让 activeMove 变 null、写作坞整个卸载，
+   * 孩子写了一半的句子跟着没了。循环永远有一个 active，坞不卸载。
+   *
+   * 不重新记 move_use：那是"决定用这一招"的时刻，换招是改主意，
+   * 记成同一个事件会让漏斗里那个数虚高。
+   */
+  function handleSwitchMove() {
+    const list = analysis?.moves ?? [];
+    if (list.length < 2) return;
+    const current = list.findIndex((move) => move.id === activeMoveId);
+    const next = list[(current + 1) % list.length];
+    if (!next) return;
+    setActiveMoveId(next.id);
+  }
+
   function handleCollect(move, fromElement, accent) {
     const alreadyIn = hasEntry(book, { essayId: essay.id, moveId: move.id, from: 'essay' });
     setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id, from: 'essay' }));
@@ -315,6 +337,7 @@ export default function Analyzer({ grade, onBack }) {
                 activeMoveId={activeMoveId}
                 onSelect={setActiveMoveId}
                 onUse={handleUseMove}
+                onSwitch={handleSwitchMove}
                 onCollect={handleCollect}
                 collected={collectedIds}
               />
@@ -342,7 +365,10 @@ export default function Analyzer({ grade, onBack }) {
 
               {activeMove && (
                 <div ref={dockRef}>
+                  {/* key 让换招时整个坞重挂——否则标题写着新招、
+                      输入框里还留着为上一招写的那句，孩子会以为那句是新招的 */}
                   <TaskDock
+                    key={activeMoveId}
                     move={activeMove}
                     grade={grade}
                     essayTitle={essay.title}

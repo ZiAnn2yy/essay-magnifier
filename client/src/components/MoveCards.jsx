@@ -15,7 +15,15 @@ import './MoveCards.css';
  * 旋转放在外层、进场动画放在内层：两者都改 transform，混在一层上会互相覆盖
  * （animation 的填充态会压过 transition 的静止态）。
  */
-export default function MoveCards({ moves, activeMoveId, onSelect, onUse, onCollect, collected }) {
+export default function MoveCards({
+  moves,
+  activeMoveId,
+  onSelect,
+  onUse,
+  onSwitch,
+  onCollect,
+  collected,
+}) {
   if (moves.length === 0) {
     return (
       <div className="moves moves-empty">
@@ -26,6 +34,9 @@ export default function MoveCards({ moves, activeMoveId, onSelect, onUse, onColl
       </div>
     );
   }
+
+  // 只有一篇招式时"换一招"没有意义——换过去还是它自己
+  const canSwitch = moves.length > 1;
 
   return (
     <div className="moves">
@@ -70,16 +81,31 @@ export default function MoveCards({ moves, activeMoveId, onSelect, onUse, onColl
                 </p>
 
                 <div className="move-actions">
-                  <button
-                    type="button"
-                    className="move-use"
-                    onClick={() => {
-                      onSelect(move.id);
-                      onUse(move);
-                    }}
-                  >
-                    用这一招
-                  </button>
+                  {/* 置顶那张的主操作换成「换一招」。
+                      卡片本身不可点，「用这一招」是唯一入口；而一旦某张置顶，
+                      其它牌的按钮就被它压着，得滚过它才点得到（用户 11-01 抓到的）。
+                      换成在这里直接切下一篇，不用滚。
+                      色块用 --sky 而不是橙：这是"换个方向"，不是"开始用"。 */}
+                  {isActive && canSwitch ? (
+                    <button
+                      type="button"
+                      className="move-switch"
+                      onClick={() => onSwitch?.(move)}
+                    >
+                      换一招
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="move-use"
+                      onClick={() => {
+                        onSelect(move.id);
+                        onUse(move);
+                      }}
+                    >
+                      用这一招
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={`move-collect${isCollected ? ' is-collected' : ''}`}
