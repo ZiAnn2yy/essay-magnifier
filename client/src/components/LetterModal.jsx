@@ -185,7 +185,7 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
         <div className="lm-scroll">
           <article className="letter lm-letter">
             <p className="letter-body">{current.reply}</p>
-            <footer className="letter-sign">—— 一直在读你的人</footer>
+            <footer className="letter-sign">—— 你的读者</footer>
           </article>
 
           {/* 引出这封信的那一句。它是回信的上下文——读者说的是"这一句"，
