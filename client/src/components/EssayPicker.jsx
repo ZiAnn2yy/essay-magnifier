@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import './EssayPicker.css';
 import { loadEssaysByGrade } from '../data/essayStore.js';
+import { track } from '../lib/track.js';
 
 /**
  * 阶段一：选一篇范文，或者贴一篇你自己的。
@@ -59,7 +60,14 @@ export default function EssayPicker({ grade, onPick, onBack }) {
       <ul className="picker-list">
         {essays.map((essay) => (
           <li key={essay.id}>
-            <button type="button" className="picker-card" onClick={() => onPick(essay)}>
+            <button
+              type="button"
+              className="picker-card"
+              onClick={() => {
+                track('essay_pick', { grade, source: 'builtin' });
+                onPick(essay);
+              }}
+            >
               <span className="picker-card-title">{essay.title}</span>
               <span className="picker-card-meta">
                 {essay.topic} · {essay.grade}年级 · {essay.sourceLabel}
@@ -70,7 +78,7 @@ export default function EssayPicker({ grade, onPick, onBack }) {
         ))}
       </ul>
 
-      <PasteBox onPick={onPick} />
+      <PasteBox onPick={onPick} grade={grade} />
     </section>
   );
 }
@@ -80,13 +88,17 @@ function excerpt(text) {
   return flat.length > 60 ? `${flat.slice(0, 60)}…` : flat;
 }
 
-function PasteBox({ onPick }) {
+function PasteBox({ onPick, grade }) {
   function handleSubmit(event) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const text = String(form.get('text') ?? '').trim();
     const title = String(form.get('title') ?? '').trim();
     if (text.length === 0) return;
+    // builtin 和 pasted 分开数：前者走预处理、0.04 秒返回，
+    // 后者走实时模型、25-60 秒且依赖 Key。两条路的占比和耗时差距
+    // 就是"核心路径已经从外部依赖上摘下来"的证据，答辩要引用它。
+    track('essay_pick', { grade, source: 'pasted' });
     onPick({ title: title || '贴进来的一篇', text, sourceLabel: '你贴进来的', grade: null });
     event.currentTarget.reset();
   }

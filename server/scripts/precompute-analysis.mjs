@@ -43,13 +43,16 @@ const outDir = path.join(root, 'data', 'precomputed');
 const GRADES = [3, 4, 5, 6];
 
 /**
- * 两种变体。为什么是两种：`collectedCount` 会改变 prompt——册子里攒够 3 招之后，
- * 支架撤除生效，模型少标几招并额外给一个 `challenge`（让孩子自己找的那一句）。
+ * 两种变体。为什么是两种：支架撤除会改变 prompt——撤除生效时模型少标几招，
+ * 并额外给一个 `challenge`（让孩子自己找的那一句）。
  * 只存基础变体的话，内置范文就永远走不到支架撤除，那个创新点在主路径上消失了。
+ *
+ * 两个数都要给：判据是"学过多少招" **且** "在几篇里真的用出来过"的合取，
+ * 见 `src/agent/fading.js`。scaffolded 档给 learned=3 / written=2，即刚好过线。
  */
 const VARIANTS = [
-  { key: 'base', collectedCount: 0, label: '基础（册子空）' },
-  { key: 'scaffolded', collectedCount: 3, label: '支架撤除（册子 3 招）' },
+  { key: 'base', collectedCount: 0, writtenEssays: 0, label: '基础（册子空）' },
+  { key: 'scaffolded', collectedCount: 3, writtenEssays: 2, label: '支架撤除（3 招 + 2 篇）' },
 ];
 
 const args = process.argv.slice(2);
@@ -147,6 +150,7 @@ async function runOne(essay, variant) {
       essayText: essay.text,
       topic: essay.topic,
       collectedCount: variant.collectedCount,
+      writtenEssays: variant.writtenEssays,
       // 绕过预处理仓。没有这一句，--force 重算时会读到仓里已有的那份，
       // 等于什么都没重算——而这个脚本的全部意义就是真去调一次模型。
       forceLive: true,

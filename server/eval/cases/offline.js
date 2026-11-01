@@ -18,6 +18,7 @@ import {
 import { validateText } from '../../src/lib/validate.js';
 import { chatCompletion } from '../../src/model/client.js';
 import { getPrecomputedAnalysis } from '../../src/agent/precomputed.js';
+import { fadeTier } from '../../src/agent/fading.js';
 import {
   isValidAnalysis,
   splitParagraphs,
@@ -27,6 +28,10 @@ import {
   ANALYZER_TIMEOUT_MS,
 } from '../../src/agent/analyze.js';
 import { buildReaderReply, READER_TIMEOUT_MS } from '../../src/agent/reader.js';
+import { record, snapshot, resetAnalytics } from '../../src/analytics.js';
+// 跨包 import 客户端代码：这条判据只有一份实现，在客户端。测它就得引它——
+// 复制一份到服务端是更糟的选择（两份会漂移，而漂移的那份会被当成真的）。
+import { isReaderQuestion } from '../../../client/src/data/writingBands.js';
 import { config } from '../../src/config.js';
 import {
   lookupStandards,
@@ -79,6 +84,35 @@ function makeFixtureStore() {
   writeFileSync(
     path.join(dir, 'grade-4.json'),
     JSON.stringify({ [FIXTURE_ID]: { base: FIXTURE_BASE, scaffolded: FIXTURE_SCAFFOLDED } }),
+    'utf-8',
+  );
+  return dir;
+}
+
+/**
+ * 造一份 **base 变体带着 challenge** 的仓。
+ *
+ * 真实仓里就是这样的：grade-3/4 各 5 篇的 base 带着 challenge——预处理时
+ * prompt 写的是"challenge 字段只在上面明确要求时才给"，那是风格约束不是闸门，
+ * 模型有时会主动多给一个。
+ *
+ * 这条夹具专为锁一个不变量：**支架没撤，就不许给孩子挑战句**。
+ * challenge 是撤除的补偿，产品少标几招才让孩子自己找一句。第一次来就见到它，
+ * "攒够招之后才有的东西"这个叙事就失真了。
+ */
+function makeLeakyFixtureStore() {
+  const dir = mkdtempSync(path.join(tmpdir(), 'fw-precompute-leak-'));
+  mkdirSync(dir, { recursive: true });
+  const leakyBase = {
+    ...FIXTURE_BASE,
+    analysis: {
+      ...FIXTURE_BASE.analysis,
+      challenge: { quote: '我把刨花扫成一堆，跳进去' },
+    },
+  };
+  writeFileSync(
+    path.join(dir, 'grade-4.json'),
+    JSON.stringify({ [FIXTURE_ID]: { base: leakyBase, scaffolded: FIXTURE_SCAFFOLDED } }),
     'utf-8',
   );
   return dir;
@@ -654,13 +688,13 @@ export const offlineCases = [
       const dir = makeFixtureStore();
       const restore = useFixtureStore(dir);
       try {
-        const hit = getPrecomputedAnalysis(4, FIXTURE_ID, 0, FIXTURE_ESSAY);
+        const hit = getPrecomputedAnalysis(4, FIXTURE_ID, 0, 0, FIXTURE_ESSAY);
         // 这一条是重点：id 对得上，文本却是另一篇。
         // essayId 是客户端给的，文本也是客户端给的，两者没有必然关系。
-        const mismatch = getPrecomputedAnalysis(4, FIXTURE_ID, 0, '完全是另一篇文字，一句都对不上。');
-        const unknownId = getPrecomputedAnalysis(4, 'no-such-id', 0, FIXTURE_ESSAY);
-        const emptyId = getPrecomputedAnalysis(4, '', 0, FIXTURE_ESSAY);
-        const wrongGrade = getPrecomputedAnalysis(6, FIXTURE_ID, 0, FIXTURE_ESSAY);
+        const mismatch = getPrecomputedAnalysis(4, FIXTURE_ID, 0, 0, '完全是另一篇文字，一句都对不上。');
+        const unknownId = getPrecomputedAnalysis(4, 'no-such-id', 0, 0, FIXTURE_ESSAY);
+        const emptyId = getPrecomputedAnalysis(4, '', 0, 0, FIXTURE_ESSAY);
+        const wrongGrade = getPrecomputedAnalysis(6, FIXTURE_ID, 0, 0, FIXTURE_ESSAY);
 
         const passed =
           hit !== null &&
@@ -688,8 +722,8 @@ export const offlineCases = [
       const dir = makeFixtureStore();
       const restore = useFixtureStore(dir);
       try {
-        const base = getPrecomputedAnalysis(4, FIXTURE_ID, 0, FIXTURE_ESSAY);
-        const scaffolded = getPrecomputedAnalysis(4, FIXTURE_ID, 3, FIXTURE_ESSAY);
+        const base = getPrecomputedAnalysis(4, FIXTURE_ID, 0, 0, FIXTURE_ESSAY);
+        const scaffolded = getPrecomputedAnalysis(4, FIXTURE_ID, 3, 2, FIXTURE_ESSAY);
         const passed =
           base !== null &&
           base.analysis.challenge === undefined &&
@@ -698,8 +732,72 @@ export const offlineCases = [
         return {
           passed,
           detail: passed
-            ? '册子 0 招取基础变体；册子 3 招取带 challenge 的变体'
+            ? '两个数都没过线取基础变体；3 招 + 2 篇都过线取带 challenge 的变体'
             : `base=${base?.analysis.challenge ?? '无'} scaffolded=${scaffolded?.analysis.challenge?.quote ?? '无'}`,
+        };
+      } finally {
+        restore();
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  },
+  {
+    // 锁住判据本身：**两个数都过线才撤支架**，不是只看一个。
+    //
+    // 2026-10-31 之前这里只写 collectedCount >= 3，而且是散在三处各写一遍
+    // （prompt、预处理仓、实时链路）。单条件有两种失效：
+    //   学过 3 招但一篇没动笔 → 他根本没地方使力，撤了就是净损失；
+    //   写过 5 篇却没从范文学过招 → 他手里没有素材，撤了他也没东西可找。
+    // Renkl & Atkinson (2003) 的结论就是撤除该按表现走，且过渡要平滑。
+    id: 'fading-001',
+    requiresKey: false,
+    pass: '学过几招 与 在几篇里用出来过 必须同时过线才撤支架，单过任何一条都不撤',
+    run: async () => {
+      const both = fadeTier({ learned: 3, written: 2 });
+      const learnedOnly = fadeTier({ learned: 3, written: 0 });
+      const writtenOnly = fadeTier({ learned: 0, written: 9 });
+      const notEnough = fadeTier({ learned: 2, written: 9 });
+      const empty = fadeTier();
+      const fnOk =
+        both === 'scaffolded' &&
+        learnedOnly === 'base' &&
+        writtenOnly === 'base' &&
+        notEnough === 'base' &&
+        empty === 'base';
+
+      const dir = makeFixtureStore();
+      const restore = useFixtureStore(dir);
+      try {
+        // 同一行判据也要管到预处理仓：内置范文走这条路径，粘贴范文走实时链路，
+        // 两处口径不一致的话，孩子在同一本册子下会看到产品在乱变。
+        const stored = getPrecomputedAnalysis(4, FIXTURE_ID, 3, 2, FIXTURE_ESSAY);
+        const notYet = getPrecomputedAnalysis(4, FIXTURE_ID, 3, 0, FIXTURE_ESSAY);
+        const storeOk =
+          stored?.analysis.challenge?.quote === '我把刨花扫成一堆，跳进去' &&
+          notYet?.analysis.challenge === undefined;
+
+        // 仓里 base 带着 challenge 时（真实仓有 10 篇这样），册子空也不许给孩子。
+        const leakDir = makeLeakyFixtureStore();
+        const leakRestore = useFixtureStore(leakDir);
+        let leakFixed = false;
+        try {
+          const leaked = await buildAnalysis({
+            grade: 4,
+            essayText: FIXTURE_ESSAY,
+            essayId: FIXTURE_ID,
+          });
+          leakFixed = leaked.analysis.challenge === undefined;
+        } finally {
+          leakRestore();
+          rmSync(leakDir, { recursive: true, force: true });
+        }
+
+        const passed = fnOk && storeOk && leakFixed;
+        return {
+          passed,
+          detail: passed
+            ? '纯函数、预处理仓、base 档不泄漏 challenge 三处同口径'
+            : `fn(${both}/${learnedOnly}/${writtenOnly}) store=${storeOk} base不泄漏=${leakFixed}`,
         };
       } finally {
         restore();
@@ -759,6 +857,110 @@ export const offlineCases = [
         detail: passed
           ? '带类型时点明「记事」；不带时要求先判断类型'
           : `stated=${stated} asked=${asked}`,
+      };
+    },
+  },
+  {
+    /* ------------------------------------------------------------
+       埋点白名单。红线一是"作品内容零个人信息"，而埋点是**唯一一处
+       由前端决定要存什么**的地方——如果 props 想传什么就存什么，
+       一次手滑就能把姓名学校写进日志，而日志是要交给评委看的材料。
+       所以这一条锁的是"白名单外的东西进不来"，不是"记的事件对不对"。
+       ------------------------------------------------------------ */
+    id: 'track-001',
+    requiresKey: false,
+    pass: '白名单外的属性一律不进快照；grade/布尔/耗时按形状校验；未知事件名与空 sid 被整条拒收',
+    run: () => {
+      resetAnalytics();
+      // 一组正常事件 + 一组想夹带私货的事件
+      record('enter', 'sid-a');
+      record('grade_pick', 'sid-a', { grade: 5 });
+      record('analyze_done', 'sid-a', {
+        grade: 5,
+        moves: 3,
+        precomputed: true,
+        degraded: false,
+        ms: 40,
+      });
+      record('essay_pick', 'sid-a', { grade: 5, source: 'pasted' });
+      // 下面这些的**属性**都不该被收下。注意区分两种拒绝：
+      //   · 事件名合法但属性不合法 → 事件本身仍然计数（那个动作真的发生了），
+      //     只是不进分档。少计一次真实的点击比多一个错档更糟。
+      //   · 事件名不合法 / sid 为空 → 整条拒收，那根本不是一个事件。
+      record('grade_pick', 'sid-a', { grade: 2 }); // 年级越界
+      record('grade_pick', 'sid-a', { grade: '5' }); // 字符串不是数字
+      record('analyze_done', 'sid-a', { ms: -1 }); // 负耗时
+      record('essay_pick', 'sid-a', { source: 'ocr' }); // 不在枚举里
+      record('essay_pick', 'sid-a', { school: '某小学', name: '张三', teacher: '李老师' }); // 夹带
+      record('不存在的_event', 'sid-a', { grade: 5 }); // 未知事件名 → 整条拒收
+      record('enter', ''); // 空 sid → 整条拒收
+
+      const snap = snapshot();
+      const text = JSON.stringify(snap);
+
+      // 夹带的三个键任何一个出现在快照里就是失败
+      const leaked = ['school', 'name', 'teacher', '某小学', '张三', '李老师'].filter((needle) =>
+        text.includes(needle),
+      );
+
+      // 分档里只能有合法那一条：grade_pick 只有 grade=5，essay_pick 只有 pasted
+      const grades = Object.keys(snap.byGrade?.grade_pick ?? {});
+      const sources = Object.keys(snap.byValue?.essay_pick?.source ?? {});
+      const breakdownOk = grades.length === 1 && grades[0] === '5' && sources.length === 1 && sources[0] === 'pasted';
+
+      // 整条拒收的那两个不能出现在 events 里
+      const rejectedOk = !snap.events['不存在的_event'] && snap.events.enter === 1;
+
+      // 漏斗：合法事件都发生在同一个 sid 上
+      const funnelOk =
+        snap.sessions === 1 && snap.funnel.enter === 1 && snap.funnel.essay_pick === 1;
+
+      const passed = leaked.length === 0 && breakdownOk && rejectedOk && funnelOk;
+      resetAnalytics();
+      return {
+        passed,
+        detail: passed
+          ? `白名单外属性全部丢弃（grade_pick 只剩 ${grades[0]}，essay_pick 只剩 ${sources[0]}）；未知事件与空 sid 整条拒收；漏斗同会话计数正常`
+          : `泄漏=[${leaked.join(',')}] 分档=${JSON.stringify({ grades, sources })} 拒收ok=${rejectedOk} 漏斗ok=${funnelOk}`,
+      };
+    },
+  },
+  {
+    /* ------------------------------------------------------------
+       提问红线。这条判据（管建刚"号脉"论证的规则版）曾经一个调用方都没有，
+       而 TaskDock 的注释一直写着"由服务端 isReaderQuestion 兜底"——
+       服务端并不 import 它。真正的保证写在 READER prompt 里。
+       当时考虑过接成读者回复的后置校验，否掉了：一条模式匹配命中就丢掉
+       整封回信，代价是确定的孩子什么都收不到（决策 39：会抖的判据
+       比没有更糟）。所以它活下来的方式是这里——拿它自己的三类例子
+       锁住判据不漂移，不在运行时拦任何东西。
+       ------------------------------------------------------------ */
+    id: 'redline-001',
+    requiresKey: false,
+    pass: 'isReaderQuestion 放行 A 类（接着孩子的内容问）与 B 类（读者陈述阅读状态），拒绝 C 类（替孩子决定写什么、句型填空）',
+    run: () => {
+      const sentence = '我摸了摸那只粗糙的手背';
+      const cases = [
+        // A 类：引用了孩子句子里的实词
+        { q: "你写到'粗糙'——摸起来什么感觉？", want: true, kind: 'A' },
+        { q: '那只手背当时是什么感觉？', want: true, kind: 'A' },
+        // B 类：读者陈述自己的阅读状态
+        { q: '读到这里我想知道后来呢', want: true, kind: 'B' },
+        { q: '我读到这里停下来看了两遍', want: true, kind: 'B' },
+        // C 类：替孩子决定写什么
+        { q: '下一句写阳光落在哪儿', want: false, kind: 'C' },
+        { q: '这里应该写奶奶的笑容', want: false, kind: 'C' },
+        // C 类：句型填空
+        { q: '它______得像______', want: false, kind: 'C' },
+        { q: '试着写一个比喻句吧', want: false, kind: 'C' },
+      ];
+      const wrong = cases.filter((item) => isReaderQuestion(item.q, sentence) !== item.want);
+      const passed = wrong.length === 0;
+      return {
+        passed,
+        detail: passed
+          ? `8 个例子全部判对（A/B 放行，C 拒绝）`
+          : `判错 ${wrong.length} 个：${wrong.map((i) => `${i.kind}「${i.q}」`).join('，')}`,
       };
     },
   },

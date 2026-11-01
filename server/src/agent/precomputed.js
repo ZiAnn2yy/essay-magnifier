@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isVerbatimSubstring } from '../lib/text.js';
 import { isValidAnalysis } from './analyze.js';
+import { fadeTier } from './fading.js';
 
 const DEFAULT_DATA_DIR = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -104,10 +105,12 @@ function matchesEssay(entry, essayText) {
  * @param {number} grade 3-6
  * @param {string} essayId 范文 id。**只有内置范文有**，粘贴进来的没有
  * @param {number} collectedCount 册子里已有的招数，决定取哪个变体
+ * @param {number} [writtenEssays] 孩子真的在几篇里用出来过。与 collectedCount
+ *   合取才取 scaffolded——判据见 agent/fading.js
  * @param {string} essayText 请求里的原文，用于复核
  * @returns {Object|null} 拿不到就返回 null，调用方退回实时拆解
  */
-export function getPrecomputedAnalysis(grade, essayId, collectedCount, essayText) {
+export function getPrecomputedAnalysis(grade, essayId, collectedCount, writtenEssays, essayText) {
   if (typeof essayId !== 'string' || essayId.length === 0) return null;
 
   const store = load(grade);
@@ -115,19 +118,22 @@ export function getPrecomputedAnalysis(grade, essayId, collectedCount, essayText
   if (!entry) return null;
 
   // 两个变体的含义见 scripts/precompute-analysis.mjs：
-  // base 是册子空的时候；scaffolded 是攒够 3 招之后，支架撤除生效，
-  // 模型少标几招并额外给一个 challenge（让孩子自己找的那一句）。
+  // base 是册子空的时候；scaffolded 是支架撤除生效时，模型少标几招
+  // 并额外给一个 challenge（让孩子自己找的那一句）。
   //
   // **scaffolded 缺失时退回 base，不要退回实时链路。** scaffolded 的约束更严
   // （challenge 不能和已标招式重复），预处理时失败率明显更高；让它落到实时链路
   // 意味着孩子要等 60-90 秒，只为了一个"本可以没有的"挑战句。
   // 退回 base 的代价只是这一篇不撤支架——全部照旧标好，那是诚实的中等结果。
-  const wanted = Number(collectedCount) >= 3 ? 'scaffolded' : 'base';
+  const wanted = fadeTier({ learned: collectedCount, written: writtenEssays });
   const variant = entry[wanted] ?? entry.base;
   if (!variant) return null;
   if (!matchesEssay(variant, essayText)) return null;
 
-  return variant;
+  // tier 一起带回：调用方要按它决定 challenge 的去留（见 analyze.js 的
+  // applyChallengePolicy）。**不要在这里剥**——那会让"取档"和"判据"
+  // 变成两处逻辑，而判据必须只有一处。
+  return { ...variant, tier: wanted };
 }
 
 /** 已预处理的篇数。给 /api/health 和运维看一眼，不需要加载正文。 */

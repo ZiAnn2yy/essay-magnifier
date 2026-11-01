@@ -3,11 +3,20 @@ import './Analyzer.css';
 import EssayPicker from './EssayPicker.jsx';
 import EssayPane from './EssayPane.jsx';
 import MoveCards from './MoveCards.jsx';
+import ChallengeCard from './ChallengeCard.jsx';
 import TaskDock from './TaskDock.jsx';
 import { analyzeEssay } from '../api.js';
 import { loadEssaysByGrade } from '../data/essayStore.js';
-import { loadBook, addMove, countLearnedMoves, hasEntry } from '../lib/moveBook.js';
+import {
+  loadBook,
+  addMove,
+  countLearnedMoves,
+  countOwnEssays,
+  favouriteMove,
+  hasEntry,
+} from '../lib/moveBook.js';
 import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
+import { track } from '../lib/track.js';
 
 /**
  * 粘贴进来的范文没有 id，而册子的键要靠 essayId 区分篇目。
@@ -50,6 +59,7 @@ export default function Analyzer({ grade, onBack }) {
     setActiveMoveId(null);
     setStatus('loading');
     setError('');
+    const startedAt = Date.now();
     try {
       const data = await analyzeEssay({
         grade,
@@ -63,8 +73,12 @@ export default function Analyzer({ grade, onBack }) {
         essayId: picked.id ?? '',
         essayText: picked.text,
         // 支架撤除的依据：册子越厚，这一篇越少直接标好，越多的招让孩子自己找。
-        // 只数学来的招，不数自己写过的句子——见 moveBook.js 里 countLearnedMoves 的说明。
+        // 两个数缺一不可——"学过多少招"和"在几篇里真的用出来过"。
+        // 只数学来的招，不数自己写过的句子（决策 41）；
+        // 用出来过的必须按篇目去重，否则同一招写十句就虚高（fading.js）。
+        // writtenEssays 同时是头衔的口径（决策 48），两处从此不分叉。
         collectedCount: countLearnedMoves(loadBook()),
+        writtenEssays: countOwnEssays(loadBook()),
       });
       if (data.crisis) {
         setStatus('crisis');
@@ -75,6 +89,16 @@ export default function Analyzer({ grade, onBack }) {
       setPrecomputed(data.precomputed === true);
       setAttempts(data.attempts);
       setStatus('done');
+      // 只记计数和耗时，不记是哪一篇、孩子看到了什么。
+      // precomputed 这一项是答辩要用的：内置路径 0.04 秒、粘贴路径 25-60 秒，
+      // 两条路的占比和耗时差距就是"我们已经把核心路径从外部依赖上摘下来"的证据。
+      track('analyze_done', {
+        grade,
+        moves: data.analysis?.moves?.length ?? 0,
+        precomputed: data.precomputed === true,
+        degraded: data.analysis?.degraded === true,
+        ms: Date.now() - startedAt,
+      });
     } catch (submitted) {
       setError(submitted.message);
       setStatus('error');
@@ -101,6 +125,7 @@ export default function Analyzer({ grade, onBack }) {
 
   function handleUseMove(move) {
     setActiveMoveId(move.id);
+    track('move_use', { grade });
     // 写作坞在右栏底部，选中一招就滚到它那儿——范文还在原处没动
     requestAnimationFrame(() => {
       dockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -110,6 +135,7 @@ export default function Analyzer({ grade, onBack }) {
   function handleCollect(move, fromElement, accent) {
     const alreadyIn = hasEntry(book, { essayId: essay.id, moveId: move.id, from: 'essay' });
     setBook(addMove({ moveId: move.id, name: move.name, essayId: essay.id, from: 'essay' }));
+    track('move_collect', { grade, from: 'essay' });
     // 收一招的回应：小白牌飞进顶栏，册子咚一下。
     // 和写完那句飞黄便签是两套——收进册子的是两样东西，飞一个样子就分不清了。
     // 已经收过的不再飞：重复播放的奖励看两次就腻。
@@ -137,7 +163,39 @@ export default function Analyzer({ grade, onBack }) {
         mySentence: text,
       }),
     );
+    track('move_collect', { grade, from: 'own' });
     punch(bookRef.current);
+  }
+
+  /**
+   * 孩子自己看出一招。
+   *
+   * 第三种来源：`from: 'spotted'`。和"从范文学来的"（essay）、
+   * "自己用上的"（own）分开算——前两类是产品给的，这一类是他自己挣的，
+   * 混在一起就分不出哪个值得夸。
+   *
+   * moveId 用招式名本身：同一篇里两次看出同一招只存一条，
+   * 而不同篇目靠 essayId 区分（键的三要素见 moveBook.js 的 entryKey）。
+   */
+  function handleSpotted(name) {
+    setBook(
+      addMove({
+        moveId: `spot-${name}`,
+        name,
+        essayId: essay.id,
+        from: 'spotted',
+      }),
+    );
+    // 只分"从标好的里挑的"和"自己命名的"，**不判对错**——产品没有这个判定
+    // （见 ChallengeCard 的说明）。但如果大多数孩子在自已命名，
+    // 说明上面标好的招式名没有落到他眼里，那是一个要改的信号。
+    const listed = (analysis?.moves ?? []).some((move) => move.name === name);
+    track('spotted', { grade, origin: listed ? 'listed' : 'custom' });
+  }
+
+  /** 挑战卡上选了"这次没看出来"。参与率的另一半，单独数。 */
+  function handleSpottedSkip() {
+    track('spotted_skipped', { grade });
   }
 
   if (!essay) {
@@ -214,6 +272,17 @@ export default function Analyzer({ grade, onBack }) {
                 onCollect={handleCollect}
                 collected={collectedIds}
               />
+
+              {/* 支架撤除的补偿：少标的几招，要从这一张卡还回来。
+                  没有它，"攒的招越多、看到的东西越少"就是净损失。 */}
+              {analysis.challenge && (
+                <ChallengeCard
+                  challenge={analysis.challenge}
+                  moves={analysis.moves}
+                  onSpotted={handleSpotted}
+                  onSkip={handleSpottedSkip}
+                />
+              )}
 
               {/* 智能体现身的地方：它照什么拆的、核对结果如何。
                   不显示这段，前面那些能力就全藏在后台——孩子和评委
@@ -344,6 +413,8 @@ function BasisNote({ basis, attempts, degraded, precomputed }) {
 function MoveBook({ entries, onClose }) {
   const learned = entries.filter((entry) => entry.from === 'essay');
   const written = entries.filter((entry) => entry.from === 'own');
+  const spotted = entries.filter((entry) => entry.from === 'spotted');
+  const favourite = favouriteMove(entries);
 
   return (
     <div className="an-book-panel" role="dialog" aria-label="我的招式册子">
@@ -361,30 +432,58 @@ function MoveBook({ entries, onClose }) {
         <span>
           写上的 <strong>{written.length}</strong> 句
         </span>
+        <span>
+          看出来的 <strong>{spotted.length}</strong> 招
+        </span>
       </p>
+
+      {/* 兴趣个体化的最轻一层：册子原来按时间倒序，孩子在里头只看见
+          "我收过什么"，看不见"我"。把分布算出来告诉他，是从
+          "每篇都有新东西"走到"我知道自己擅长什么"的那一步。 */}
+      {favourite && (
+        <p className="an-book-favourite">
+          你最常用的一招是「{favourite.name}」，在 <strong>{favourite.essays}</strong> 篇里用过它。
+        </p>
+      )}
 
       {entries.length === 0 ? (
         <p className="an-book-empty">还空着。拆一篇范文，点「收进册子」。</p>
       ) : (
         <ul className="an-book-list">
           {entries.map((entry) => (
-            <li key={`${entry.moveId}-${entry.from}-${entry.at}`}>
-              {entry.from === 'own' ? (
-                <>
-                  {/* 自己写的那句排在最前：册子里最值得回头看的就是它 */}
-                  <p className="an-book-mine">{entry.mySentence}</p>
-                  <span>用「{entry.name}」写上的</span>
-                </>
-              ) : (
-                <>
-                  <strong>{entry.name}</strong>
-                  <span>从范文学来的</span>
-                </>
-              )}
-            </li>
+            <BookEntry key={`${entry.moveId}-${entry.from}-${entry.at}`} entry={entry} />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+/** 一条册子记录。三种来源各自怎么说，取决于这一条是怎么来的。 */
+function BookEntry({ entry }) {
+  if (entry.from === 'own') {
+    return (
+      <>
+        {/* 自己写的那句排在最前：册子里最值得回头看的就是它 */}
+        <p className="an-book-mine">{entry.mySentence}</p>
+        <span>用「{entry.name}」写上的</span>
+      </>
+    );
+  }
+
+  if (entry.from === 'spotted') {
+    return (
+      <>
+        <strong>{entry.name}</strong>
+        <span>你自己看出来的</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <strong>{entry.name}</strong>
+      <span>从范文学来的</span>
+    </>
   );
 }

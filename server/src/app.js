@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { errorResponse } from './lib/errors.js';
 import { logger } from './lib/logger.js';
-import storyboardRouter from './routes/storyboard.js';
 import analyzeRouter from './routes/analyze.js';
 import readerRouter from './routes/reader.js';
 import accessRouter from './routes/access.js';
+import trackRouter from './routes/track.js';
+import { countPrecomputed } from './agent/precomputed.js';
 import { requireAccess } from './auth/access-code.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -27,11 +28,14 @@ export function createApp() {
 
   // 能力声明：客户端必须先协商再决定发什么，不得假设服务端支持某种模态。
   // 本期只实现纯文本；audioUrl 字段已预留但未实现，因此不出现在 input 列表里。
+  // precomputed 是运维字段：上传包漏了预处理仓时这里会显示 0，
+  // 不用等"点开一篇要等 60 秒"才发现。
   app.get('/api/health', (_req, res) => {
     res.json({
       ok: true,
       contract: CONTRACT_VERSION,
       modalities: { input: ['text'], output: ['text'] },
+      precomputed: countPrecomputed(),
     });
   });
 
@@ -46,9 +50,11 @@ export function createApp() {
     requireAccess(req, res, next);
   });
 
-  app.use('/api/v2/storyboard', storyboardRouter);
   app.use('/api/v3/analyze', analyzeRouter);
   app.use('/api/v3/reader', readerRouter);
+  // 埋点挂在 /api/v3 下：路由内部再用 '/track' 和 '/stats' 分流。
+  // 挂在 /api/v3/track 上的话，'/stats' 会变成 /api/v3/track/stats。
+  app.use('/api/v3', trackRouter);
   app.use('/api/access', accessRouter);
 
   // ===== 生产模式：托管前端构建产物 =====

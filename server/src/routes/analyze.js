@@ -34,12 +34,28 @@ function validateGrade(value) {
   return grade;
 }
 
-/** 收藏册里已有的招数。支架撤除的依据：册子越厚，这一篇越少直接标好。 */
+/** 收藏册里已有的招数。支架撤除的依据之一：册子越厚，这一篇越少直接标好。 */
 function validateCollectedCount(value) {
   if (value === undefined || value === null) return 0;
   const count = Number(value);
   if (!Number.isInteger(count) || count < 0 || count > MAX_COLLECTED) {
     throw new ValidationError(`collectedCount 必须是 0-${MAX_COLLECTED} 的整数`);
+  }
+  return count;
+}
+
+/**
+ * 孩子真的在几篇里用出来过。支架撤除的另一半依据。
+ *
+ * 和 collectedCount 是合取，不是替换——见 agent/fading.js 的说明。
+ * 单独立一个校验函数而不是复用上面那个：这两个数的含义不同，
+ * 错误信息该说清是哪一个，否则排查时要猜。
+ */
+function validateWrittenEssays(value) {
+  if (value === undefined || value === null) return 0;
+  const count = Number(value);
+  if (!Number.isInteger(count) || count < 0 || count > MAX_COLLECTED) {
+    throw new ValidationError(`writtenEssays 必须是 0-${MAX_COLLECTED} 的整数`);
   }
   return count;
 }
@@ -97,6 +113,7 @@ router.post('/', async (req, res) => {
       topic: validateTopic(req.body?.topic),
       essayId: validateEssayId(req.body?.essayId),
       collectedCount: validateCollectedCount(req.body?.collectedCount),
+      writtenEssays: validateWrittenEssays(req.body?.writtenEssays),
     };
 
     const result = await buildAnalysis(request);

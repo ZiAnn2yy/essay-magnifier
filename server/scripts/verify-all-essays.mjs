@@ -41,8 +41,12 @@ for (const grade of GRADES) {
 
   for (const essay of essays) {
     total += 1;
-    // 两种册子状态都试：base（0 招）和 scaffolded（3 招，支架撤除生效）
-    for (const collectedCount of [0, 3]) {
+    // 两种册子状态都试。判据是合取，所以 scaffolded 档要两个数都过线
+    // （3 招学过 + 2 篇里用出来过），见 src/agent/fading.js。
+    for (const [collectedCount, writtenEssays] of [
+      [0, 0],
+      [3, 2],
+    ]) {
       try {
         const response = await fetch(`${base}/api/v3/analyze`, {
           method: 'POST',
@@ -54,6 +58,7 @@ for (const grade of GRADES) {
             essayId: essay.id,
             essayText: essay.text,
             collectedCount,
+            writtenEssays,
           }),
           signal: AbortSignal.timeout(30000),
         });

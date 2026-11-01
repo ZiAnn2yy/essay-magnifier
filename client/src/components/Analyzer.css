@@ -271,9 +271,12 @@
 }
 
 /* 两个数分开摆：学来的招和写上的句是两样成就，混成一个数
-   孩子不知道自己攒的是什么。也让"我写了三句"这件事被看见。 */
+   孩子不知道自己攒的是什么。也让"我写了三句"这件事被看见。
+   2026-10-31 起是三个数——"看出来的"是 articulation 的产物，
+   前两个是产品给的，第三个是他自己挣的。 */
 .an-book-tally {
   display: flex;
+  flex-wrap: wrap;
   gap: 14px;
   margin: 0 0 12px;
   padding: 8px 11px;
@@ -287,6 +290,24 @@
 .an-book-tally strong {
   font-family: var(--font-round);
   font-size: 15px;
+}
+
+/* "你最常用的一招"。兴趣个体化的最轻一层：册子按时间倒序时
+   孩子在里头只看见"我收过什么"，看不见"我"。 */
+.an-book-favourite {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.an-book-favourite strong {
+  font-size: 16px;
 }
 
 .an-book-list li {

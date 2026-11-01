@@ -5,6 +5,7 @@ import StartScreen from './components/StartScreen.jsx';
 import StageGate from './components/StageGate.jsx';
 import Analyzer from './components/Analyzer.jsx';
 import { checkAccess, unlock } from './api.js';
+import { track } from './lib/track.js';
 
 // 动效常开，不跟随系统的"减少动态效果"偏好。
 // 用户 2026-10-29 明确要求：动效是这个产品的内容（落贴纸、发牌、那句飞进
@@ -44,7 +45,11 @@ export default function App() {
 
   const ask = useCallback(() => {
     checkAccess()
-      .then(setAccess)
+      .then((result) => {
+        setAccess(result);
+        // 进到开始屏才算一个会话真正开始。门槛都没过的连接不计入漏斗。
+        track('enter', {});
+      })
       .catch(() => setAccess({ required: false, unlocked: false, unreachable: true }));
   }, []);
 
@@ -84,7 +89,14 @@ export default function App() {
   }
 
   if (!started) {
-    return <StartScreen onStart={() => setStarted(true)} />;
+    return (
+      <StartScreen
+        onStart={() => {
+          track('start', {});
+          setStarted(true);
+        }}
+      />
+    );
   }
 
   if (grade === null) {

@@ -1,6 +1,7 @@
 import './StageGate.css';
 import FlowWash from './FlowWash.jsx';
 import { BANDS } from '../data/writingBands.js';
+import { track } from '../lib/track.js';
 
 /**
  * 入口：选年级。
@@ -46,7 +47,10 @@ export default function StageGate({ onPick }) {
                     style={{
                       '--card-accent': bandIndex === 0 ? 'var(--yellow)' : 'var(--pink)',
                     }}
-                    onClick={() => onPick(grade)}
+                    onClick={() => {
+                      track('grade_pick', { grade });
+                      onPick(grade);
+                    }}
                   >
                     <span className="gate-grade-num">{grade}</span>
                     <span className="gate-grade-unit">年级</span>

@@ -14,7 +14,13 @@
  * 退出码非 0 表示有用例没过。
  */
 
-import { entryKey, hasEntry, countLearnedMoves } from '../src/lib/moveBook.js';
+import {
+  entryKey,
+  hasEntry,
+  countLearnedMoves,
+  countOwnEssays,
+  favouriteMove,
+} from '../src/lib/moveBook.js';
 
 let failed = 0;
 
@@ -92,6 +98,80 @@ check(
   ]),
   2,
 );
+
+// ---- 2026-10-31 新增：用出来过的篇目数 ----
+// 这个数是支架撤除的另一半依据（另一半是 countLearnedMoves，合取）。
+// 它必须按**篇目**去重，不能按句子条数：同一招写十句就是 2026-10-30
+// 修掉的那种虚高——计数涨十倍，能力没动。
+check(
+  '同一篇里写三句只算一篇（去重）',
+  countOwnEssays([
+    { from: 'own', essayId: 'a', moveId: 'm1' },
+    { from: 'own', essayId: 'a', moveId: 'm2' },
+    { from: 'own', essayId: 'a', moveId: 'm3' },
+  ]),
+  1,
+);
+
+check(
+  '不同篇目各算一篇',
+  countOwnEssays([
+    { from: 'own', essayId: 'a', moveId: 'm1' },
+    { from: 'own', essayId: 'b', moveId: 'm1' },
+    { from: 'own', essayId: 'c', moveId: 'm1' },
+  ]),
+  3,
+);
+
+// 关键边界：看出来不等于用出来过。
+// from: 'spotted' 是 articulation 的产物，它证明的是"他看得见"，
+// 不是"他写得出来"。fading 的表现信号只能收 own。
+check(
+  'spotted 不算用出来过（看出来 ≠ 写出来）',
+  countOwnEssays([
+    { from: 'essay', essayId: 'a', moveId: 'm1' },
+    { from: 'spotted', essayId: 'a', moveId: 'spot-把动作放慢写' },
+    { from: 'spotted', essayId: 'b', moveId: 'spot-把动作放慢写' },
+    { from: 'own', essayId: 'a', moveId: 'm1' },
+  ]),
+  1,
+);
+
+check('countOwnEssays 不吃非数组', countOwnEssays(null), 0);
+
+// ---- 最常用的一招 ----
+// 同样按篇目数，不按条目数：一篇里把同一招写三遍，
+// 不如在两篇里各写一遍更能说明"他偏好这一招"。
+check(
+  'favouriteMove 按篇目数算，不按条目数',
+  (() => {
+    const fav = favouriteMove([
+      { from: 'own', essayId: 'a', name: '把动作放慢写' },
+      { from: 'own', essayId: 'a', name: '把动作放慢写' },
+      { from: 'own', essayId: 'a', name: '把动作放慢写' },
+      { from: 'own', essayId: 'b', name: '先写声音' },
+      { from: 'own', essayId: 'c', name: '先写声音' },
+    ]);
+    return fav ? `${fav.name}/${fav.essays}` : 'null';
+  })(),
+  '先写声音/2',
+);
+
+check(
+  'favouriteMove 只数 from=own（学来的招不算偏好）',
+  (() => {
+    const fav = favouriteMove([
+      { from: 'essay', essayId: 'a', name: '从范文看来的' },
+      { from: 'essay', essayId: 'b', name: '从范文看来的' },
+      { from: 'spotted', essayId: 'a', name: '自己看出来的' },
+      { from: 'own', essayId: 'z', name: '真正常用的' },
+    ]);
+    return fav ? fav.name : 'null';
+  })(),
+  '真正常用的',
+);
+
+check('favouriteMove 空册子返回 null', favouriteMove([]), null);
 
 console.log(
   failed === 0

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './TaskDock.css';
 import { askReader } from '../api.js';
+import { track } from '../lib/track.js';
 
 /**
  * 阶段三：用一招写自己的，然后给"读者"看。
@@ -24,6 +25,9 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
   const [reply, setReply] = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
   const [error, setError] = useState('');
+  // 从"选中这一招"到"交给读者"的间隔。它是这个产品唯一的过程指标：
+  // 隔得太短可能是随手写的，隔得长说明他真的在想。只记时长，不记内容。
+  const mountedAt = Date.now();
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -33,6 +37,7 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
     setStatus('sending');
     setError('');
     try {
+      const sentAt = Date.now();
       const data = await askReader({
         moveName: move.name,
         essayTitle,
@@ -40,6 +45,14 @@ export default function TaskDock({ move, grade, essayTitle, onKeep, kept }) {
       });
       setReply(data.reply);
       setStatus('done');
+      track('written', { grade, ms: sentAt - mountedAt });
+      // degraded 是答辩要用的：读者回应是唯一的动机引擎，
+      // 它降级一次孩子就什么都收不到。这个数说明"我们离外部依赖有多远"。
+      track('reader_done', {
+        grade,
+        degraded: data.degraded === true,
+        ms: Date.now() - sentAt,
+      });
     } catch (submitted) {
       setError(submitted.message);
       setStatus('error');

@@ -1,0 +1,183 @@
+/*
+ * 「你自己看」卡片。
+ *
+ * 视觉语言照 MoveCards 的牌：白底、粗描边、左边一道彩色厚边。
+ * 厚边用紫色（--purple）不用橙/粉——那两色已经被招式牌和飞牌占了，
+ * 第三种来源的卡片该有自己的颜色，孩子扫一眼就知道这不是产品标好的那一类。
+ *
+ * 原句用 --fs-essay 档：它是这一张卡的主角，值得按阅读级字号给。
+ */
+.challenge {
+  padding: 13px 15px 14px;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-left: 9px solid var(--purple);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift-sm);
+}
+
+.challenge-head {
+  margin-bottom: 7px;
+}
+
+.challenge-kicker {
+  display: inline-block;
+  padding: 2px 9px;
+  font-family: var(--font-round);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--white);
+  background: var(--purple);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+}
+
+/* 原句。blockquote 自带缩进，全部清零——它在这里是主角不是引用 */
+.challenge-quote {
+  margin: 0 0 9px;
+  padding: 0;
+  font-family: var(--font-round);
+  font-size: var(--fs-essay);
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--ink);
+  -webkit-text-stroke: 0.7px currentColor;
+}
+
+.challenge-ask {
+  margin: 0 0 10px;
+  font-family: var(--font-round);
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.challenge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.challenge-yes,
+.challenge-no,
+.challenge-submit {
+  padding: 9px 17px;
+  font-family: var(--font-round);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.challenge-yes {
+  background: var(--yellow);
+}
+
+/* 「这次没看出来」压到最弱：它是一个正当的退出，不是失败 */
+.challenge-no {
+  background: var(--white);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.challenge-yes:active,
+.challenge-no:active,
+.challenge-submit:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.challenge-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 11px;
+  padding: 0;
+  list-style: none;
+}
+
+.challenge-option {
+  padding: 7px 13px;
+  font-family: var(--font-round);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--sky);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.challenge-option:active {
+  transform: translateY(2px);
+}
+
+.challenge-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.challenge-input {
+  flex: 1 1 150px;
+  box-sizing: border-box;
+  padding: 8px 11px;
+  font-family: var(--font-round);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--sky);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.challenge-submit {
+  background: var(--yellow);
+}
+
+.challenge-submit:disabled {
+  background: var(--sky-2);
+  color: var(--ink-soft);
+  box-shadow: none;
+  cursor: default;
+}
+
+.challenge-done,
+.challenge-skipped {
+  margin: 0;
+  font-family: var(--font-round);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.challenge-skipped {
+  color: var(--ink-soft);
+}
+
+/* 看出来之后厚边换成册子的黄：这一招现在是他的了 */
+.challenge.is-done {
+  border-left-color: var(--yellow);
+}
+
+.challenge.is-done .challenge-kicker {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.challenge.is-skipped {
+  border-left-color: var(--sky-2);
+}
+
+.challenge.is-skipped .challenge-kicker {
+  display: none;
+}
+
+/* 动效退路：这张卡的信息是"你想出来了"，不是过渡动画 */
+html.motion-off .challenge-quote {
+  -webkit-text-stroke: none;
+}

@@ -25,6 +25,7 @@ import { buildAnalyzerPrompt } from './prompts/index.js';
 import { detectCrisis, CRISIS_REPLY } from '../safety/crisis-rules.js';
 import { isVerbatimSubstring } from '../lib/text.js';
 import { getPrecomputedAnalysis } from './precomputed.js';
+import { fadeTier } from './fading.js';
 import { lookupForAnalysis, renderStandards } from './standards.js';
 
 /** 自纠错轮数。只给一次：每次调用约 7 秒，孩子等不起第三次。 */
@@ -146,6 +147,29 @@ export function isValidAnalysis(analysis, essayText) {
   return null;
 }
 
+/**
+ * 按档位决定 challenge 去留。
+ *
+ * **base 档一律不给 challenge**，哪怕模型（或预处理仓）给了。原因是 fading 的
+ * 方向：challenge 是"支架撤除的补偿"——产品少标几招，才让孩子自己找一句。
+ * 支架还没撤就给人挑战，是 fading 的反面；而且"攒够招之后才有的东西"
+ * 这个叙事会失真，孩子第一次来就见到它，攒够了反而不觉得有什么变化。
+ *
+ * 为什么必须在这里过滤、不能只靠 prompt：prompt 里写的是"challenge 字段只在
+ * 上面明确要求时才给"，那是风格约束不是硬闸门。预处理仓里有 10 篇
+ * （grade-3/4 各 5 篇）的 base 变体带着 challenge——模型当时主动多给的。
+ * 判据只在这一处执行，两条路径（预处理仓 / 实时链路）才同口径。
+ *
+ * @param {Object} analysis 拆解结果，会被原样返回（不修改入参）
+ * @param {'base'|'scaffolded'} tier
+ * @returns {Object}
+ */
+function applyChallengePolicy(analysis, tier) {
+  if (tier === 'scaffolded' || !analysis?.challenge) return analysis;
+  const { challenge: _dropped, ...rest } = analysis;
+  return rest;
+}
+
 /** 确定性切段。
  *
  * 优先按空行/换行切——人粘贴的作文本来就分自然段。只有整篇只有一个块
@@ -254,7 +278,9 @@ export function localAnalyze({ essayText }) {
  *   带上它才可能命中预处理结果（提前算好的拆解），粘贴的范文不带
  * @param {string} [request.topic] 这一篇的类型，取值见 agent/standards.js 的 GENRE_TOPICS。
  *   粘贴进来的范文没有类型，留空即可——检索会跳过文体视角卡
- * @param {number} [request.collectedCount] 孩子收藏册里已有的招数，支架撤除的依据
+ * @param {number} [request.collectedCount] 孩子收藏册里已有的招数，支架撤除的依据之一
+ * @param {number} [request.writtenEssays] 孩子真的在几篇里用出来过，支架撤除的另一半依据。
+ *   两个数必须都过线才撤，判据和理由见 agent/fading.js
  * @param {boolean} [request.forceLive] 跳过预处理仓，真的去调一次模型。
  *   **只给预处理脚本用**（它要的就是重算）；正常请求不要传
  */
@@ -278,12 +304,13 @@ export async function buildAnalysis(request) {
         request.grade,
         request.essayId,
         request.collectedCount ?? 0,
+        request.writtenEssays ?? 0,
         request.essayText,
       );
   if (precomputed) {
     return {
       crisis: false,
-      analysis: precomputed.analysis,
+      analysis: applyChallengePolicy(precomputed.analysis, precomputed.tier),
       degraded: false,
       attempts: precomputed.attempts,
       basis: precomputed.basis,
@@ -315,14 +342,19 @@ export async function buildAnalysis(request) {
           standardsText,
           retryReason,
           collectedCount: request.collectedCount,
+          writtenEssays: request.writtenEssays,
           topic: request.topic,
+        });
+        const tier = fadeTier({
+          learned: request.collectedCount,
+          written: request.writtenEssays,
         });
         if (attempt > 1) {
           logger.info('拆解自纠错成功', { attempt });
         }
         return {
           crisis: false,
-          analysis,
+          analysis: applyChallengePolicy(analysis, tier),
           degraded: false,
           attempts: attempt,
           // 这次拆解照的是什么依据。**必须回给前端并显示出来**——

@@ -66,7 +66,7 @@ function keyOf(entry) {
 /**
  * 学来的招数：只数 `from: 'essay'`，不数自己写过的句子。
  *
- * 这个数是**支架撤除**的依据（服务端按它决定这一篇还直接标几招、
+ * 这个数是**支架撤除**的一半依据（服务端按它决定这一篇还直接标几招、
  * 要不要给 challenge）。所以它必须只反映"见过多少招"。
  *
  * 2026-10-30 之前调用方传的是 `loadBook().length`——册子里混着两种条目，
@@ -74,11 +74,65 @@ function keyOf(entry) {
  * prompt 还会跟他说"你已经自己攒下 10 招了"。他并没有更会自己找招，
  * 只是同一招练了十次。**撤除的依据是见过多少招，不是写过多少字。**
  *
+ * 2026-10-31 起它只是合取的一半，另一半是 countOwnEssays——见那个函数的说明。
+ *
  * @param {Array} entries 册子条目，传 loadBook() 的结果
  * @returns {number} 从范文学来的招数
  */
 export function countLearnedMoves(entries) {
   return (Array.isArray(entries) ? entries : []).filter((entry) => entry.from === 'essay').length;
+}
+
+/**
+ * 自己用出来过的**篇目数**：只数 `from: 'own'`，且按 essayId 去重。
+ *
+ * 这是支架撤除的另一半依据，和 countLearnedMoves 是**合取**，不是替换：
+ * 见过很多招但从不动笔的孩子，支架永远不该撤（他没地方使力）；
+ * 只学过一招却反复写它的孩子，撤了他也没东西可找。
+ * Renkl & Atkinson (2003) 的结论是撤除该按表现走，而"在几篇里真的用出来过"
+ * 是这个产品能拿到的最接近表现的信号。
+ *
+ * **必须按篇目去重，不能按句子条数。** 同一招写十句就是 2026-10-30
+ * 修掉的那种虚高：计数涨了十倍，能力没动。按篇目还有一个好处——
+ * 它和头衔（决策 48：按"用自己的话接过的篇数"算）是同一个数，
+ * 两处口径从此不再分叉。
+ *
+ * @param {Array} entries 册子条目，传 loadBook() 的结果
+ * @returns {number} 真正动笔写过的篇目数
+ */
+export function countOwnEssays(entries) {
+  const seen = new Set();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (entry?.from === 'own' && entry.essayId) seen.add(entry.essayId);
+  }
+  return seen.size;
+}
+
+/**
+ * 用得最多的一招，以及它出现在几篇里。
+ *
+ * 兴趣个体化的最轻一层（Hidi & Renninger 四阶段的第三阶段）：册子原来按时间
+ * 倒序，孩子在里面只看到"我收过什么"，看不到"我"。把分布算出来告诉他
+ * "你最常用这一招"，是从"每篇都有新东西"走到"我知道自己擅长什么"的那一步。
+ *
+ * 数据本来就在 localStorage 里，这一层不新增任何采集。
+ *
+ * @param {Array} entries 册子条目，传 loadBook() 的结果
+ * @returns {{name: string, essays: number} | null} 没有记录时返回 null
+ */
+export function favouriteMove(entries) {
+  const tally = new Map();
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (entry?.from !== 'own' || !entry.name) continue;
+    const key = entry.name;
+    if (!tally.has(key)) tally.set(key, new Set());
+    tally.get(key).add(entry.essayId);
+  }
+  let best = null;
+  for (const [name, essays] of tally) {
+    if (!best || essays.size > best.essays) best = { name, essays: essays.size };
+  }
+  return best;
 }
 
 export function loadBook() {
@@ -91,9 +145,4 @@ export function addMove(entry) {
   const next = [...entries, { ...entry, at: Date.now() }];
   write(next);
   return next;
-}
-
-export function clearBook() {
-  write([]);
-  return [];
 }

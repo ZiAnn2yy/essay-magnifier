@@ -3,14 +3,14 @@
  *
  * 恢复自 git 历史 `4b333f4:client/src/api/client.js` 的形状：统一前缀、
  * 统一判 `ok`、失败抛带中文消息的 Error。旧实现随旧页面一起下架了，
- * 但"前端必须自己处理失败"这件事没过时——当前界面零错误提示，
+ * 但"前端必须自己处理失败"这件事没过期——当前界面零错误提示，
  * 模型慢一拍用户就以为程序死了。
  *
- * 学习者标识由服务端随机生成，**不收集姓名学校**（规范§四.5）。
- * 存 localStorage 只是为了刷新后不用重新建档。
+ * **不收集身份。** 原先这里有 getLearnerId / ensureLearner 两个函数，
+ * 打一个 /api/learner 端点建档、把 id 存 localStorage——那条路由早已删除，
+ * 这两个函数是死的，2026-11-01 删掉。产品立场是不收集姓名学校
+ * （规范§四.5）：要统计行为就只计数，见 lib/track.js。
  */
-
-const LEARNER_KEY = 'fw.learnerId';
 
 async function request(path, options = {}) {
   let response;
@@ -28,18 +28,6 @@ async function request(path, options = {}) {
     throw new Error(data?.message ?? `请求失败（${response.status}）`);
   }
   return data;
-}
-
-export function getLearnerId() {
-  return window.localStorage.getItem(LEARNER_KEY);
-}
-
-export async function ensureLearner() {
-  const cached = getLearnerId();
-  if (cached) return cached;
-  const data = await request('/learner', { method: 'POST' });
-  window.localStorage.setItem(LEARNER_KEY, data.learnerId);
-  return data.learnerId;
 }
 
 export function checkAccess() {
@@ -63,11 +51,22 @@ export function unlock(code) {
  *
  * `essayId` 只有内置范文有。带上它才可能命中预处理结果（提前算好的拆解），
  * 于是点开内置范文**不依赖模型在不在线**；粘贴的范文不带，走实时 agent。
+ *
+ * `collectedCount` 和 `writtenEssays` 是支架撤除的两半依据，服务端**两个都过线**
+ * 才撤。判据和为什么是合取见 `server/src/agent/fading.js`。
  */
-export function analyzeEssay({ grade, title, topic, essayId, essayText, collectedCount }) {
+export function analyzeEssay({
+  grade,
+  title,
+  topic,
+  essayId,
+  essayText,
+  collectedCount,
+  writtenEssays,
+}) {
   return request('/v3/analyze', {
     method: 'POST',
-    body: JSON.stringify({ grade, title, topic, essayId, essayText, collectedCount }),
+    body: JSON.stringify({ grade, title, topic, essayId, essayText, collectedCount, writtenEssays }),
   });
 }
 

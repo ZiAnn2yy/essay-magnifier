@@ -34,20 +34,33 @@ export const BANDS = [
   },
 ];
 
-/** 课标分水岭：从几年级开始才值得亮"有新鲜感的词句"。 */
-export const PICK_WORDS_FROM_GRADE = 3;
-
-export function getBandByGrade(grade) {
-  return BANDS.find((band) => band.grades.includes(grade)) ?? null;
-}
-
-export function getBandById(bandId) {
-  return BANDS.find((band) => band.id === bandId) ?? null;
-}
-
-/** 这个年级要不要亮好词。按年级，不按学段带——三年级是课标的分水岭。 */
-export function shouldPickWords(grade) {
-  return grade >= PICK_WORDS_FROM_GRADE;
+/**
+ * 问题和孩子的句子是否共享一个 2-3 字片段。
+ *
+ * 为什么用滑窗而不是分词：项目不引分词库（规范§三：不加新依赖），
+ * 而中文分词的收益在这里换不来——要判断的只是"这个问题有没有接着
+ * 孩子写的东西在说"，两个连续汉字撞上就已经是很强的信号。
+ *
+ * @param {string} sentence 孩子刚写出的那句
+ * @param {string} question 智能体的问题
+ * @returns {boolean} 有共享片段
+ */
+function sharesFragment(sentence, question) {
+  if (typeof sentence !== 'string' || typeof question !== 'string') return false;
+  // 只取中文和英文单词，标点不参与
+  const words = sentence.match(/[一-龥]+|[A-Za-z]{3,}/g) ?? [];
+  for (const word of words) {
+    if (/[A-Za-z]/.test(word)) {
+      if (question.toLowerCase().includes(word.toLowerCase())) return true;
+      continue;
+    }
+    for (let size = 3; size >= 2; size -= 1) {
+      for (let start = 0; start + size <= word.length; start += 1) {
+        if (question.includes(word.slice(start, start + size))) return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -89,9 +102,12 @@ export function isReaderQuestion(question, sentence) {
   if (prescriptive.some((pattern) => pattern.test(question))) return false;
 
   // A 类：引用了孩子句子里的实词
-  const fragments =
-    typeof sentence === 'string' ? sentence.match(/[一-龥]{2,}|[A-Za-z]{3,}/g) ?? [] : [];
-  if (fragments.some((fragment) => question.includes(fragment))) return true;
+  //
+  // 中文没有词边界，`sentence.match(/[一-龥]{2,}/g)` 在一句没有空格的话上
+  // 只会抓到**一整句**，于是 `question.includes(整句)` 永远为假——
+  // 这个函数因此从来没放过行过任何一条 A 类，而它一直没人调用，所以没人发现。
+  // 改成滑窗取 2-3 字片段：粗，但"粗"本来就是这条规则版的定位。
+  if (sharesFragment(sentence, question)) return true;
 
   // B 类：读者在说自己的阅读状态
   const readerVoice = [
