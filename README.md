@@ -1,7 +1,6 @@
-# 教育陪伴智能体
+# 范文放大镜
 
-面向学习者的陪伴式智能体：不直接给答案，用提问引导学习者自己推出结论，
-并跨会话记住学习者的状态。
+拆开一篇优秀范文，让孩子看清"它是怎么写成的"；学一招，写他自己的。
 
 参赛项目：第二届全国人工智能应用创新大赛 · 教育命题域。
 
@@ -13,19 +12,49 @@
 
 1. **作品内容零个人信息。** 智能体界面、PPT、答辩视频、录屏、代码注释、
    README、`package.json` 的 `author` 字段，一律不得出现学校名称、
-   学生姓名、指导教师信息。学习者标识由服务端随机生成，
-   本工程不提供任何让用户填写姓名/学校的输入框。
+   学生姓名、指导教师信息。本工程不提供任何让用户填写姓名/学校的输入框，
+   提交作者身份也刻意保持匿名（`edu-agent <edu-agent@local>`）。
 2. **API Key 不下前端。** Key 只存在于 `server/`，通过环境变量读取。
    `.env` 同时被 `.gitignore` 和 `.dockerignore` 排除；
-   生产环境通过 DevCloud 平台的环境变量注入，不拷贝进镜像。
-3. **期限。** 作品提交截止 2026-11-10 24:00。截止前 3 天冻结新功能。
+   部署时通过平台的环境变量注入，不拷贝进镜像。
+3. **期限。** 作品提交截止 2026-11-10 24:00。截止前 3 天（11-07）冻结新功能。
+
+---
+
+## 产品是什么
+
+面向**小学 3-6 年级**的语文作文工具。节拍像游戏开局，不像表单：
+
+```
+开始 → 选年级 → 选范文 → 拆解 → 用一招写自己的
+```
+
+三个阶段在一页里推进，不跳路由——从"看懂"到"动手写"之间每多一次页面切换，
+就多一个放弃点。
+
+| 阶段 | 做什么 |
+|---|---|
+| 选范文 | 内置 79 篇自撰示例范文（命中预处理，**不调模型，0.04 秒返回**），或贴一篇自己的 |
+| 拆解 | 出招式卡（招式名 / 范文原句 / 这一句里发生了什么 / 孩子可以怎么用）+ challenge + 依据 |
+| 用一招 | 孩子写一句自己的，一个"读者"回应他——引用原句、说读到什么、问一个开放问题 |
+
+**脊柱**：王荣生"例文"说 + 布鲁纳支架式教学。范文的价值是让孩子获得**可迁移的
+写作知识**；产品的支架（直接标好的那几招）必须**逐步变薄**，否则就是新型句型填空。
+荣维东的交际语境写作降级为阶段三"读者身份"的约束。
+
+**新红线只有一条：教方法，不给内容。** AI 给招式不给句子，不出填空模板。
+
+**两条工作线**：引导（招式卡 → challenge → 合取撤除）与激励（册子 → 头衔 → 读者来信）。
+激励是证据不是奖励——不加积分星级连击排行榜。依据见
+[`docs/wiki/07-引导与激励的实证依据.md`](./docs/wiki/07-引导与激励的实证依据.md)，
+每条带 Crossref DOI。
 
 ---
 
 ## 技术栈
 
-React + Vite + Node.js + Express + 京东云 JoyCode 模型 API（OpenAI 兼容）
-+ 京东云 DevCloud 部署。不使用 TypeScript，不引入新技术栈。
+React + Vite（**不用 TypeScript**）+ Node.js + Express + StepFun 模型 API
+（OpenAI 兼容）+ 魔搭创空间部署。不使用 TypeScript，不引入新技术栈。
 
 完整规范见 [`编程规范.md`](./编程规范.md)，那是本工程的唯一先行文件。
 
@@ -37,20 +66,30 @@ React + Vite + Node.js + Express + 京东云 JoyCode 模型 API（OpenAI 兼容�
 edu-agent/
 ├── 编程规范.md            # 项目规范，唯一先行文件
 ├── CLAUDE.md              # 每次会话自动加载的规范摘要
-├── client/                # React + Vite 前端（智能体的其中一个客户端）
+├── client/                # React + Vite 前端
+│   └── src/
+│       ├── components/    # 见 docs/wiki/03-前端架构.md
+│       ├── data/          # 范文分片、学段、提问红线
+│       ├── lib/           # 收藏册、回信、埋点、飞行动效
+│       └── styles/        # 设计令牌、字体、motion-off 总闸
 ├── server/                # Express 后端
-│   ├── src/
-│   │   ├── agent/         # 智能体内核：不 import express，硬件客户端可直搬
-│   │   ├── model/         # JoyCode 客户端：超时 + 重试≤2 + 降级
-│   │   ├── memory/        # node:sqlite 学习者状态
-│   │   ├── safety/        # 危机信号规则引擎（模型无权覆盖）
-│   │   ├── routes/        # HTTP 层
-│   │   └── lib/           # 校验、错误、脱敏日志
+│   └── src/
+│       ├── agent/         # 拆解、读者回应、支架撤除、预处理仓、知识库检索
+│       ├── analytics.js   # 行为埋点：只计数，不带身份
+│       ├── auth/          # 访问门槛（一个共享密码）
+│       ├── model/         # StepFun 客户端：超时 + 重试≤2 + 降级
+│       ├── routes/        # analyze / reader / track / access
+│       ├── safety/        # 危机信号规则引擎（模型无权覆盖）
+│       └── lib/           # 校验、错误、脱敏日志
+│   ├── data/precomputed/  # 内置范文提前算好的拆解（要入库，别挡）
 │   ├── eval/              # 评测集
-│   └── scripts/           # JoyCode 能力 spike
-├── scripts/check-secrets.sh  # 提交前 Key 自检
-├── docs/contract.md       # 接口契约与能力协商
-└── Dockerfile             # DevCloud 部署
+│   └── scripts/           # 预处理、穷尽验证、打包、探活
+├── scripts/               # check-secrets.sh、pack-modelscope.mjs
+├── docs/
+│   ├── contract.md        # 接口契约（v3）
+│   ├── HANDOFF.md         # 当前状态、踩过的坑、下一步
+│   └── wiki/              # 结构化知识库，改代码前先读这里
+└── Dockerfile             # 魔搭创空间部署
 ```
 
 ---
@@ -58,19 +97,22 @@ edu-agent/
 ## 快速开始
 
 ```bash
-# 后端
+# 后端（端口 3010——3000 被本机别的服务占了）
 cd server
 npm ci
-cp .env.example .env      # 然后自己填 LLM_API_URL / LLM_API_KEY / LLM_MODEL
-npm start                 # 没填 Key 也能起：/api/health 可用，/api/chat 返回降级话术
+cp .env.example .env      # 填 LLM_API_URL / LLM_API_KEY / LLM_MODEL / ACCESS_CODE
+npm start
 
 # 前端（另开一个终端）
 cd client
 npm ci
-npm run dev
+VITE_API_TARGET=http://localhost:3010 npm run dev
 ```
 
-打开 http://localhost:5173 。
+打开 http://localhost:5173 。深链：`?grade=5` 跳过选年级，`?essay=<id>` 直接开到拆解。
+
+**没填 Key 也能用**：内置范文命中预处理、`/api/v3/reader` 返回降级话术。
+Key 只影响"粘贴一篇自己的"那条路。
 
 ---
 
@@ -89,28 +131,40 @@ bash scripts/check-secrets.sh
 
 ```bash
 cd server
-node --no-warnings eval/run.js
+node --no-warnings eval/run.js        # 33 条：31 离线（无 Key 可跑）+ 2 在线
+node --no-warnings ../client/scripts/test-movebook.mjs   # 收藏册检索层 34 条
 ```
 
-8 条离线用例不依赖模型，无 Key 也能跑；在线用例需要 Key。
+规则：**先写通过条件，再写用例**；判分用确定性断言，不上 model-as-judge；
+超时导致的降级记 SKIP 不记 FAIL。
 
 ---
 
 ## 当前状态
 
-**工程骨架期。** 已就绪：工程外壳、接口契约、模型调用层（含超时重试降级）、
-Function Calling 主循环、学习者状态存储、危机信号规则引擎、前端功能壳、评测集骨架。
+**三个阶段功能闭环可跑，核心路径不依赖外部模型。**
 
-待与指导教师沟通后确定：知识卡片内容与题库、system prompt 具体教学法文案、
-界面视觉方向（须过 `oil-ui`）、评测集内容用例。
+- 内置范文 **79/79 有招、79/79 命中预处理、520 处引用逐字核对通过**
+- 评测 **33/33**、收藏册单测 **34/34**、`npm run build` 通过、密钥自检通过
+- 引导线：challenge 接上（articulation 补上）、撤除改合取判据
+- 激励线：读者回信（信纸 + 放大镜）、收藏册三种来源、证据墙 + 头衔
+- **行为埋点已上线**：`/api/v3/track` + `/api/v3/stats`，属性白名单，只计数不带身份
+- 上传文件夹已按最新代码重新打包
+
+详细状态与下一步见 [`docs/HANDOFF.md`](./docs/HANDOFF.md)。
 
 ---
 
 ## 已知限制
 
-- **会话状态不跨部署保留。** SQLite 库文件落在容器文件系统里，
-  DevCloud 重新部署后会重置。对外表述应为"会话状态在容器生命周期内持久化"。
-- **无认证。** 目前 `learnerId` 只是一个随机标识，不是身份凭证。
-  若评审需要登录，需另加最小认证层。
-- **`node:sqlite` 在 Node 22 仍是实验特性。** 启动脚本用 `--no-warnings`
-  压掉告警；换机部署时先确认 Node 版本。
+- **"粘贴一篇自己的"走实时模型**，25-60 秒且依赖 Key 有效——这是当前最大的风险。
+  内置范文已经不依赖模型了，这一条还没有
+- **`online-002` 在 temperature=1 下会抖**，连跑可能出现一次红。它是文档记录的
+  已知抖动用例，判据窄到只认 timeout 一种降级
+- **≤860px 下截图工具点「用这一招」无效**（相邻的「收进册子」有效）。
+  代码回退到上一个提交后同样失败，判定为既有问题；真机上是否真的点不动
+  未经人工确认
+- **多模态是代码渲染，不是 AI 生成。** 对外说"画面由排版、SVG 与 CSS 生成"，
+  **不要写"AI 生成动画/绘本"**——那是虚假宣传
+- **会话状态不跨部署保留。** 对外表述应为"容器生命周期内持久化"
+- **内置范文全部是自撰的示例范文**，不得冒充教材范文或学生真作
