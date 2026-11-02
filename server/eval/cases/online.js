@@ -30,9 +30,15 @@ const CHILD_TEXT = '爷爷切苹果的时候，一刀一刀下去，皮连成一
  *
  * 判据必须窄：只有明确归类为 timeout 的才跳。额度耗尽、上游不可达、
  * 输出不合规，全都照旧算 FAIL——那些是真问题。
+ *
+ * **两个出口的字段名不一样**：analyze 回 `degradeReason`，reader 回 `reason`。
+ * 2026-11-02 发现这条不一致让读者路径的超时一直跳不掉、全记成 FAIL——
+ * 恰好是这个函数要防的那件事（因为模型慢而红的用例，看起来和提示词写坏一样）。
+ * 所以两个字段都读，`budget-002` 锁着它。
  */
-function skipIfTimeout({ degraded, degradeReason }) {
-  if (degraded && degradeReason === 'timeout') {
+export function skipIfTimeout(result) {
+  const reason = result.degradeReason ?? result.reason;
+  if (result.degraded && reason === 'timeout') {
     return { skipped: true, skipReason: '模型本次超时（环境因素），不计入通过率' };
   }
   return null;

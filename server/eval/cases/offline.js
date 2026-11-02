@@ -29,6 +29,7 @@ import {
 } from '../../src/agent/analyze.js';
 import { buildReaderReply, READER_TIMEOUT_MS } from '../../src/agent/reader.js';
 import { record, snapshot, resetAnalytics } from '../../src/analytics.js';
+import { skipIfTimeout } from './online.js';
 // 跨包 import 客户端代码：这条判据只有一份实现，在客户端。测它就得引它——
 // 复制一份到服务端是更糟的选择（两份会漂移，而漂移的那份会被当成真的）。
 import { isReaderQuestion } from '../../../client/src/data/writingBands.js';
@@ -642,6 +643,42 @@ export const offlineCases = [
         detail: passed
           ? budgets.map((item) => `${item.name} ${item.value / 1000}s`).join('，') + '，调用点均已覆盖'
           : `预算不足：[${tooSmall.map((i) => i.name).join(',')}]；未覆盖：[${missing.map((i) => i.name).join(',')}]`,
+      };
+    },
+  },
+  {
+    /* ------------------------------------------------------------
+       锁住"超时记 SKIP 不记 FAIL"这件事本身。
+
+       2026-11-02 发现它其实是坏的：skipIfTimeout 只读 degradeReason，
+       而读者回应回的是 reason（analyze 才回 degradeReason）。于是读者路径的
+       超时一跳不掉、全记成 FAIL——恰好是决策 38 要防的那件事：
+       因为模型慢而红的用例，和提示词写坏而红的用例在报告里长得一样，
+       看报告的人就开始忽略红色。
+
+       这条不联网、不需要 Key，喂两个出口各自的形状进去。
+       ------------------------------------------------------------ */
+    id: 'budget-002',
+    requiresKey: false,
+    pass: '超时降级记 SKIP 不记 FAIL；analyze 和 reader 两种字段名都认',
+    run: () => {
+      const analyzeShape = skipIfTimeout({ degraded: true, degradeReason: 'timeout' });
+      const readerShape = skipIfTimeout({ degraded: true, reason: 'timeout' });
+      const quota = skipIfTimeout({ degraded: true, reason: 'quota' });
+      const upstream = skipIfTimeout({ degraded: true, reason: 'upstream' });
+      const healthy = skipIfTimeout({ degraded: false, reason: 'timeout' });
+
+      const passed =
+        analyzeShape?.skipped === true &&
+        readerShape?.skipped === true &&
+        quota === null &&
+        upstream === null &&
+        healthy === null;
+      return {
+        passed,
+        detail: passed
+          ? '两种字段名都认；quota / upstream / 未降级 照旧算 FAIL'
+          : `analyze=${!!analyzeShape} reader=${!!readerShape} quota=${!!quota} upstream=${!!upstream} healthy=${!!healthy}`,
       };
     },
   },
