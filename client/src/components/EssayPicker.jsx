@@ -14,8 +14,12 @@ import { track } from '../lib/track.js';
  *
  * 范文列表按年级**动态加载**（见 data/essayStore.js）。曾经整库静态 import，
  * 篇数一多主包就白白背上几百 KB；改成按年级分片后，只在选中那个年级时才下载。
+ *
+ * **返回换年级走顶栏，这里不再放一个**：2026-11-02 巡检发现窄屏下顶栏和
+ * 这个头部各有一个「← 换年级」，两个按钮做同一件事，孩子会猜哪个是真的。
+ * 顶栏那个在所有状态都在，留着它一个就够。
  */
-export default function EssayPicker({ grade, onPick, onBack }) {
+export default function EssayPicker({ grade, onPick }) {
   const [essays, setEssays] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -42,9 +46,6 @@ export default function EssayPicker({ grade, onPick, onBack }) {
   return (
     <section className="picker">
       <header className="picker-head">
-        <button type="button" className="picker-back" onClick={onBack}>
-          ← 换年级
-        </button>
         <h2 className="picker-title">选一篇范文，或者贴一篇你自己的</h2>
         <p className="picker-sub">
           现在是{grade}年级，有 {essays.length} 篇可以拆。选一篇，或者把作文本上的一篇贴进来。

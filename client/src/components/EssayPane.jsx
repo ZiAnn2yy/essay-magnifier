@@ -63,7 +63,7 @@ export default function EssayPane({
                     key={`${paragraph.index}-${index}`}
                     onClick={() => {
                       const move = paragraphMoves.find((item) => item.quote === segment.text);
-                      if (move) onSelectMove?.(move.id);
+                      if (move) onSelectMove?.(move);
                     }}
                   >
                     {segment.text}

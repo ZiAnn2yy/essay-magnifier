@@ -134,6 +134,15 @@ export default function Analyzer({ grade, onBack }) {
     };
   }, [grade, runAnalyze]);
 
+  /**
+   * 用上这一招：选中 + 滚到写作坞。
+   *
+   * 两个入口共用它——卡片上的「用这一招」和范文里涂黄的那一句。涂黄那句
+   * 原先只 setActiveMoveId：牌转正了，写作坞也在下面挂上了，可窄屏里它在
+   * 屏幕外，孩子点了原句只看到牌转个方向，不知道右边已经展开等他写。
+   * 同一动作两个入口就该同一个结果，所以这里也滚。
+   * move_use 照记：点原句和点按钮是同一个决定，漏记会让漏斗那个数偏低。
+   */
   function handleUseMove(move) {
     setActiveMoveId(move.id);
     track('move_use', { grade });
@@ -268,7 +277,7 @@ export default function Analyzer({ grade, onBack }) {
           letterRef={letterAnchorRef}
         />
         <div className="an-body an-body-single">
-          <EssayPicker grade={grade} onPick={runAnalyze} onBack={onBack} />
+          <EssayPicker grade={grade} onPick={runAnalyze} />
         </div>
       </main>
     );
@@ -328,7 +337,7 @@ export default function Analyzer({ grade, onBack }) {
               moves={analysis.moves}
               freshWords={analysis.freshWords}
               activeMoveId={activeMoveId}
-              onSelectMove={setActiveMoveId}
+              onSelectMove={handleUseMove}
             />
 
             <div className="an-side">

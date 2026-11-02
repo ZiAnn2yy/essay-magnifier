@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  /* 不参与压缩：一压就把下面的列表压成一条（见 .moves-list 的说明） */
+  flex: 0 0 auto;
 }
 
 .moves-title {
@@ -24,9 +26,15 @@
   flex-direction: column;
   /* 负间距让牌互相压着：一沓纸，不是一排并列的卡片 */
   gap: 0;
-  overflow-y: auto;
+  /* **不再自己滚，也不参与压缩。**
+     2026-11-02 巡检修：这里原来是 overflow-y:auto + flex:1，于是写作坞
+     一挂上，flex 就把这个列表压到只剩置顶牌那么高，第 2、3 张牌连按钮
+     一起消失——换不了招，也收不进另外两招（攒够 3 招才触发支架撤除）。
+     改成自然高度，整栏由 .an-side 统一滚。副作用是好的：牌带旋转，
+     overflow:visible 之后包围盒外扩也不会被切掉。 */
+  overflow-y: visible;
   min-height: 0;
-  flex: 1;
+  flex: 0 0 auto;
   scrollbar-width: thin;
   scrollbar-color: var(--ink) transparent;
 }
@@ -72,11 +80,14 @@
  * 用上的那一招：置顶 + 跟踪。
  *
  * 为什么是 sticky 不是"挪到列表最前面"：孩子点「用这一招」之后要往下滚到
- * 写作坞去写，滚下去之后就看不见自己在用哪一招了。sticky 让它钉在招式列表
- * 的顶部跟着滚，范文在左、正在用的招在右上、写作坞在右下——三样同时看得见。
+ * 写作坞去写，滚下去之后就看不见自己在用哪一招了。sticky 让它钉在右栏顶部
+ * 跟着滚，范文在左、正在用的招在右上、写作坞在右下——三样同时看得见。
  *
- * 之所以能成立：.moves-list 自己是 overflow-y:auto 的滚动容器，
- * sticky 的包含块就是它，钉的是它的顶边。
+ * 钉的是哪个顶边：**.an-side**，不是 .moves-list。列表自己不再是滚动容器
+ * （见 .moves-list 的说明），所以 sticky 去找最近的滚动祖先就是右栏。
+ * 这一点很关键——钉在 .moves-list 上时，它的滚动容器只有置顶牌那么高，
+ * 别的牌永远在被盖住的那一截里，点不到。
+ *
  * 后来的牌会从这张下面钻过去（margin-top:-14px 那套压着的关系不变），
  * 靠 z-index 保证压的是别人不是自己。
  */
@@ -190,13 +201,16 @@
   border-radius: var(--r-sm);
 }
 
+/* 「你可以怎么用」这个小签。原来用橙字，橙压在浅底上只有 2.20:1
+   （lint 判的不达标）。改 ink-soft：6.35:1 压在白上、4.94:1 压在天蓝底上，
+   都过 4.5:1，而且它仍然比正文的 ink 低一档——是签，不是内容。 */
 .move-try-label {
   display: block;
   margin-bottom: 3px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--orange);
+  color: var(--ink-soft);
 }
 
 .move-actions {
@@ -204,6 +218,12 @@
   gap: 9px;
 }
 
+/* 「用这一招」是这一屏的主动作，底改 ink、字改白。
+   橙底白字只有 2.84:1，橙底配 ink 字 4.34:1 也差一口气——都是 oil-ui lint
+   判的不达标，而这是给 8-12 岁孩子看的字。ink 底白字 12.29:1。
+   沿用决策 68 立的原则：区分靠明暗不靠色相。浅底的天蓝（换一招）、
+   黄（收进册子）都在它下面一档，主动作最重，扫一眼就知道点哪儿。
+   橙色没有退场——它还是牌子左边那道厚边和引用句的荧光笔。 */
 .move-use {
   flex: 1;
   padding: 10px;
@@ -211,7 +231,7 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--white);
-  background: var(--orange);
+  background: var(--ink);
   border: 3px solid var(--ink);
   border-radius: var(--r-md);
   box-shadow: var(--lift-sm);
@@ -306,6 +326,26 @@ html.motion-off .move, html.motion-off .move-use, html.motion-off .move-collect 
 
 html.motion-off .move-deal {
   animation: none;
+}
+
+/* ==========================================================================
+   窄屏（≤860px）：置顶那张不钉了
+   --------------------------------------------------------------------------
+   列表不再自己滚、整栏由 .an-side 统一滚——那条在所有宽度都成立，写在
+   上面的基础规则里。这里只多一件窄屏专属的事。
+
+   实测（768x900）：.an-side 的视口只有 413px，置顶牌一张就占 298px，
+   只剩 115px——别的牌的「用这一招」正好被它盖在这 115px 底下，点不着。
+   宽屏没这事：1440px 下 .an-side 有 800px 以上，牌下面还留一大截，
+   决策 44 要的"三样同时看得见"成立。
+   不钉之后牌原地待着，整列跟着右栏滚，每张牌的按钮都够得着。
+   "正在用哪一招"没有丢：牌本身转正、放大、投影最重，写作坞的标题
+   也写着那一招的名字。
+   ========================================================================== */
+@media (max-width: 860px) {
+  .move.is-active {
+    position: static;
+  }
 }
 
 /* 无障碍退路只关动画，不关状态：置顶和"已收"是信息不是装饰，

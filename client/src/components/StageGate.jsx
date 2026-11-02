@@ -53,7 +53,6 @@ export default function StageGate({ onPick }) {
                     }}
                   >
                     <span className="gate-grade-num">{grade}</span>
-                    <span className="gate-grade-unit">年级</span>
                   </button>
                 ))}
               </div>
