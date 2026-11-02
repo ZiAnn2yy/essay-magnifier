@@ -120,8 +120,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 14px 8px 12px;
+  justify-content: center;
+  /* 上下改成等量的：卡片里只剩一个大数字（「年级」删了，见下），
+     原来 14/12 是为了给底下那小签留位置 */
+  padding: 16px 8px;
   font-family: var(--font-round);
   background: var(--card-accent);
   border: 3px solid var(--ink);
@@ -148,10 +150,12 @@
   -webkit-text-stroke: 0.7px currentColor;
 }
 
-.gate-grade-unit {
-  font-size: 12px;
-  color: var(--ink);
-}
+/* 「年级」这个小签删了（2026-11-02）。
+   它在粉卡上只有 4.22:1——这套色板里没有一个强调色能在 12px 上过 4.5:1
+   （粉配白 2.91:1、配 ink 4.22:1，决策 68 已经记过这个结论），
+   而它和上面的 band 标签「三四年级 / 五六年级」、以及问题本身
+   「你现在几年级？」是三层重复。删掉之后卡片只剩一个大数字，
+   信息一点没少，对比度问题也不存在了。 */
 
 
 html.motion-off .gate-grade {

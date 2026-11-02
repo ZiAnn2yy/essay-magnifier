@@ -15,6 +15,9 @@
   gap: 4px;
 }
 
+/* 粉底白字 2.91:1，不达标。按决策 68 立的原则改 ink 底白字（12.29:1）——
+   和 .challenge-kicker 同一个做法，两个 kicker 从此长一样。
+   区分靠明暗不靠色相：dock 里其余都是浅底，这个小签是深的那一个。 */
 .dock-kicker {
   align-self: flex-start;
   padding: 2px 9px;
@@ -22,7 +25,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--white);
-  background: var(--pink);
+  background: var(--ink);
   border: 2px solid var(--ink);
   border-radius: 999px;
 }
@@ -72,6 +75,11 @@
   opacity: 0.7;
 }
 
+/* 主动作，也是整个产品闭环的最后一下。粉底白字 2.91:1 不达标
+   （lint 之前没报是因为空输入框时它是禁用态，被跳过了；一能按就露出来）。
+   按决策 68 改 ink 底白字 12.29:1——和「用这一招」从此同一个样子：
+   两屏的主动作长得一样，孩子不用重新学。粉色没有别处再用也没关系，
+   它在作文本那道红竖线、新鲜词的荧光笔和五六年级的卡上还在。 */
 .dock-submit {
   align-self: flex-start;
   padding: 11px 24px;
@@ -79,7 +87,7 @@
   font-size: 16px;
   font-weight: 700;
   color: var(--white);
-  background: var(--pink);
+  background: var(--ink);
   border: 3px solid var(--ink);
   border-radius: var(--r-md);
   box-shadow: var(--lift);

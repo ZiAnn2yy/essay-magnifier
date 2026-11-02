@@ -57,16 +57,22 @@
   outline-offset: 2px;
 }
 
+/* 错误条。原来粉底 ink 字 4.22:1，差一点过不了 4.5:1（决策 68 记过：
+   粉这个色相里没有能承载正文的组合）。改成白底 ink 字 12.29:1，
+   粉色退到边线上——"出错了"靠那道粉边说，字本身要看得清。 */
 .gate-lock-error {
   margin: 10px 0 0;
   padding: 8px 10px;
   font-size: 13px;
   color: var(--ink);
-  background: var(--pink);
-  border: 2px solid var(--ink);
+  background: var(--white);
+  border: 2px solid var(--pink);
   border-radius: var(--r-sm);
 }
 
+/* 橙底白字 2.84:1，不达标。17px 粗体还算不上 WCAG 的"大字"（要 18.66px），
+   所以不能靠 ink 字蒙过去（橙底配 ink 只有 4.34:1）。改 ink 底白字 12.29:1，
+   和另外三屏的主动作同一个样子。 */
 .gate-lock-submit {
   width: 100%;
   margin-top: 18px;
@@ -75,7 +81,7 @@
   font-size: 17px;
   font-weight: 700;
   color: var(--white);
-  background: var(--orange);
+  background: var(--ink);
   border: 3px solid var(--ink);
   border-radius: var(--r-md);
   box-shadow: var(--lift);
