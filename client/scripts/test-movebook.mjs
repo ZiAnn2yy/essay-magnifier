@@ -47,10 +47,58 @@ check(
   true,
 );
 check(
-  '同一篇、同一招，换成另一种来源 → 不命中（收过招不等于写过句）',
-  hasEntry(stored, { essayId: 'g4-54183', moveId: 'm1', from: 'own' }) &&
-    !hasEntry([stored[0]], { essayId: 'g4-54183', moveId: 'm1', from: 'own' }),
+  '自己写的那一句，要连句子一起比才命中',
+  hasEntry(stored, {
+    essayId: 'g4-54183',
+    moveId: 'm1',
+    from: 'own',
+    mySentence: '爷爷切苹果…',
+  }),
   true,
+);
+check(
+  '只问"这一招收过没有"、不带句子 → 不命中。按钮就是照这个改的：问句不问招',
+  hasEntry(stored, { essayId: 'g4-54183', moveId: 'm1', from: 'own' }),
+  false,
+);
+check(
+  '同一篇、同一招，换成另一种来源 → 不命中（收过招不等于写过句）',
+  !hasEntry([stored[0]], { essayId: 'g4-54183', moveId: 'm1', from: 'own', mySentence: '爷爷切苹果…' }),
+  true,
+);
+
+// ---- 同一招在同一篇里可以收几句（2026-11-02 修的死路）----
+const twoSentences = [
+  { essayId: 'g4-54183', moveId: 'm1', from: 'own', mySentence: '爷爷切苹果…', at: 1 },
+  { essayId: 'g4-54183', moveId: 'm1', from: 'own', mySentence: '苹果皮连成一条，没断。', at: 2 },
+];
+check(
+  '同一招在同一篇里写了两句，两句各自命中',
+  twoSentences.every((entry) =>
+    hasEntry(twoSentences, {
+      essayId: entry.essayId,
+      moveId: entry.moveId,
+      from: 'own',
+      mySentence: entry.mySentence,
+    }),
+  ),
+  true,
+);
+check(
+  '两句不同，键就不同——不会互相把对方顶掉',
+  new Set(twoSentences.map((entry) => entryKey(entry))).size,
+  2,
+);
+check(
+  '同一句存两次，键相同——去重仍然有效',
+  entryKey({ essayId: 'a', moveId: 'm1', from: 'own', mySentence: '同一句' }) ===
+    entryKey({ essayId: 'a', moveId: 'm1', from: 'own', mySentence: '同一句' }),
+  true,
+);
+check(
+  '从范文学来的招，键还是三要素（不带句子）',
+  entryKey({ essayId: 'a', moveId: 'm1', from: 'essay', mySentence: '不该进键' }),
+  'a::m1::essay',
 );
 
 // ---- 本次 bug 的核心：不同篇目、同一个 moveId，绝不能算命中 ----
@@ -63,10 +111,10 @@ check(
   false,
 );
 check(
-  '只在一篇里用 m1 写过，另一篇的 m1 不显示已写',
+  '只在一篇里用 m1 写过，另一篇的同一句也不显示已写',
   hasEntry(
-    [{ essayId: 'g4-54183', moveId: 'm1', from: 'own', mySentence: '…', at: 1 }],
-    { essayId: 'g4-78041', moveId: 'm1', from: 'own' },
+    [{ essayId: 'g4-54183', moveId: 'm1', from: 'own', mySentence: '爷爷切苹果…', at: 1 }],
+    { essayId: 'g4-78041', moveId: 'm1', from: 'own', mySentence: '爷爷切苹果…' },
   ),
   false,
 );

@@ -38,18 +38,33 @@ function write(entries) {
  * 2026-10-30 真犯过：存储用的是这个复合键（对的），读回来时只 map 了 moveId（错的），
  * 于是册子里明明没有这一招，卡片上写着已收。用户在演示时抓到的。
  *
- * @param {{essayId: string, moveId: string, from: string}} entry
+ * ## 自己写的那一句，键要带上句子本身（2026-11-02 加）
+ *
+ * 原先 `from: 'own'` 的键也是这三要素，于是**同一招在同一篇里只能收一句**：
+ * 写过第一句并收下之后按钮就禁用，孩子改一句再提交、得了新回信，
+ * 却存不进册子——他刚写的那句话没有地方去。
+ * 而证据墙本来就是按招式分组列多句的（"这一招我用过三次，这是那三次"），
+ * 数据层拦着不让多收，和展示层的意图是反的。
+ * 带上句子之后：同一句存两次仍然去重，不同的两句各占一条。
+ * 计数不受影响——`countOwnEssays` 按篇目去重，`favouriteMove` 也按篇目。
+ *
+ * @param {{essayId: string, moveId: string, from: string, mySentence?: string}} entry
  * @returns {string}
  */
 export function entryKey(entry) {
-  return `${entry.essayId}::${entry.moveId}::${entry.from}`;
+  const base = `${entry.essayId}::${entry.moveId}::${entry.from}`;
+  if (entry.from === 'own' && entry.mySentence) return `${base}::${entry.mySentence}`;
+  return base;
 }
 
 /**
  * 册子里有没有这一条——同一篇、同一招、同一种来源，三者全对上才算。
  *
+ * `from: 'own'` 时**要连句子一起比**（见 entryKey 的说明）：问"这一招收过没有"
+ * 和问"这一句收过没有"是两个问题，后者才该决定按钮还能不能按。
+ *
  * @param {Array} entries 册子条目，传 loadBook() 的结果
- * @param {{essayId: string, moveId: string, from: string}} wanted
+ * @param {{essayId: string, moveId: string, from: string, mySentence?: string}} wanted
  * @returns {boolean}
  */
 export function hasEntry(entries, wanted) {
@@ -58,7 +73,10 @@ export function hasEntry(entries, wanted) {
   return (Array.isArray(entries) ? entries : []).some((item) => entryKey(item) === key);
 }
 
-/** 同一招在同一篇里只收一次——重复收藏会让"攒了多少"变成假的 */
+/**
+ * 去重用的键。和 entryKey 同一个——同一篇、同一招、同一种来源、
+ * （自己写的句子还有）同一句，三者以上全对上才算同一条。
+ */
 function keyOf(entry) {
   return entryKey(entry);
 }

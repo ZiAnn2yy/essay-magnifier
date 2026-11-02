@@ -264,6 +264,27 @@ export default function Analyzer({ grade, onBack }) {
     setLetterOpen(true);
   }
 
+  /**
+   * 这一句收过没有。
+   *
+   * 问的是**这一句**，不是"这一招在这一篇里写过没有"——同一招在同一篇里可以写
+   * 几句，几句都该留得下（证据墙本来就是按招式分组列多句的）。传函数而不是布尔，
+   * 因为当前写到哪一句只有 TaskDock 里的输入框知道。
+   *
+   * 写成普通函数而不是 useCallback：它要跟着 book 和 activeMoveId 变，
+   * 而 TaskDock 没有 memo，包一层缓存没有收益，反倒容易踩 hooks 顺序的坑
+   * （2026-11-02 真犯过：把它放到早返回之后，React 直接 #310）。
+   */
+  function isOwnKept(sentence) {
+    if (sentence.length === 0) return false;
+    return hasEntry(book, {
+      essayId: essay.id,
+      moveId: activeMoveId,
+      from: 'own',
+      mySentence: sentence,
+    });
+  }
+
   if (!essay) {
     return (
       <main className="an">
@@ -284,13 +305,12 @@ export default function Analyzer({ grade, onBack }) {
   }
 
   const activeMove = analysis?.moves.find((move) => move.id === activeMoveId) ?? null;
-  // 收过没、写过没，都要**连篇目一起比**。招式的 id 是 m1/m2/m3 按次生成的，
+  // 收过没，要**连篇目一起比**。招式的 id 是 m1/m2/m3 按次生成的，
   // 只比 moveId 会把别的篇目的同一序号当成自己收过的——册子里没有这一招，
   // 卡片上却写着"已收进册子"，孩子点不动也不知道为什么。
   const collectedIds = (analysis?.moves ?? [])
     .filter((move) => hasEntry(book, { essayId: essay.id, moveId: move.id, from: 'essay' }))
     .map((move) => move.id);
-  const keptOwn = hasEntry(book, { essayId: essay.id, moveId: activeMoveId, from: 'own' });
 
   return (
     <main className="an">
@@ -382,7 +402,7 @@ export default function Analyzer({ grade, onBack }) {
                     grade={grade}
                     essayTitle={essay.title}
                     onKeep={handleKeepOwn}
-                    kept={keptOwn}
+                    isKept={isOwnKept}
                     onLetter={handleLetter}
                     onReopenLetter={openLatestLetter}
                   />
@@ -449,6 +469,10 @@ function TopBar({
  *
  * 真模型首 token 6.3 秒，藏不住，所以不假装快：把正在发生的事说出来，
  * 并随时间换档——超过 10 秒就承认"这一篇比较难拆"。
+ *
+ * 2026-11-02 补第四档：粘贴路径实测 25-60 秒，而第三档从 9 秒起一句话
+ * 显示到结束，一半的时间只有一句"还在拆"。45 秒之后把原因说明白——
+ * 贴进来的篇子没有提前算过，所以慢。**不假装快**是这套文案的底线。
  */
 function Analyzing({ essayTitle }) {
   const [elapsed, setElapsed] = useState(0);
@@ -463,7 +487,9 @@ function Analyzing({ essayTitle }) {
       ? '在读这一篇…'
       : elapsed < 9
         ? '在找它用了哪些招…'
-        : '这一篇比较讲究，还在拆…';
+        : elapsed < 25
+          ? '这一篇比较讲究，还在拆…'
+          : '贴进来的篇子没有提前算过，拆得慢一些…';
 
   return (
     <div className="an-panel an-loading">
