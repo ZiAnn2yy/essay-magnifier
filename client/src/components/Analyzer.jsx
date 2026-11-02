@@ -23,7 +23,7 @@ import {
 } from '../lib/moveBook.js';
 import { flyTextTo, flyCardTo, punch } from '../lib/flyTo.js';
 import { track } from '../lib/track.js';
-import { loadLetters, addLetter } from '../lib/letterStore.js';
+import { loadLetters, addLetter, addFollowUp, sealLetter } from '../lib/letterStore.js';
 import LetterModal from './LetterModal.jsx';
 
 /**
@@ -268,6 +268,27 @@ export default function Analyzer({ grade, onBack }) {
   }
 
   /**
+   * 追问落了一轮：问的和答的都记在那封信里。
+   *
+   * 记 `follow_up` 事件——它是这套产品里最能说明"孩子被勾住了"的信号：
+   * 读完回信还愿意接着问，比写完一句更值钱。只记次数，不记内容。
+   */
+  function handleFollowUp(letterId, ask, answer) {
+    setLetters(addFollowUp(letterId, { ask, answer }));
+    track('follow_up', { grade });
+  }
+
+  /**
+   * 关上回信：那一封从此只能读，不能再追问。
+   *
+   * 见 LetterModal 文件头那节——用户要的是"引起兴趣"加"让孩子们把握当下"，
+   * 回信来了那一刻最想说话，那一刻过去了就不再补票。
+   */
+  function handleSealLetter(letterId) {
+    setLetters(sealLetter(letterId));
+  }
+
+  /**
    * 从册子里拿出一条。返回它**原来的位置**——册子面板要拿这个位置
    * 把"放回去"做回原样，放回末尾会让孩子刚整理的顺序又乱掉。
    *
@@ -452,6 +473,8 @@ export default function Analyzer({ grade, onBack }) {
         onIndexChange={setLetterIndex}
         onClose={() => setLetterOpen(false)}
         sourceRef={letterAnchorRef}
+        onFollowUp={handleFollowUp}
+        onSeal={handleSealLetter}
       />
     </main>
   );

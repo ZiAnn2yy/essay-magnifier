@@ -83,3 +83,18 @@ export function askReader({ moveName, essayTitle, childText }) {
     body: JSON.stringify({ moveName, essayTitle, childText }),
   });
 }
+
+/**
+ * 追问：孩子读完回信接着问，读者当场答。
+ *
+ * 走 /api/v3/follow-up，**不是**再打一次 /api/v3/reader：追问要带上下文
+ * （他原来写的那句、读者原来的回信）才能接得上话，那是另一个契约。
+ * 同一封信里可以追问很多次，每次都是一次独立调用——不写会话，
+ * 上下文由调用方每次带全。
+ */
+export function askFollowUp({ moveName, essayTitle, mySentence, reply, question }) {
+  return request('/v3/follow-up', {
+    method: 'POST',
+    body: JSON.stringify({ moveName, essayTitle, mySentence, reply, question }),
+  });
+}

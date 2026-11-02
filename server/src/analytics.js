@@ -57,6 +57,9 @@ const EVENTS = {
   written: { keys: ['grade', 'ms'] },
   // 读者回信到达。degraded 是真的降级了（没配上 Key / 超时 / 额度）
   reader_done: { keys: ['grade', 'degraded', 'ms'] },
+  // 追问了一轮。读完回信还愿意接着问，比写完一句更值钱——
+  // 它是"孩子被勾住了"最直接的那个信号
+  follow_up: { keys: ['grade'] },
 };
 
 /** 属性值的形状校验。布尔和数字不落字符串，避免"true"/"false"两种写法。 */

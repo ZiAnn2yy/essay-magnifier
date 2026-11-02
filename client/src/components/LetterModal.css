@@ -273,3 +273,137 @@ html.motion-off .lm-backdrop {
 html.motion-off .letter {
   animation: none;
 }
+
+/* ==========================================================================
+   追问（2026-11-02 加）
+   ========================================================================== */
+
+/* "他还在，能问一句"。活的信才有这一句，锁了就换成本节末尾那句。
+   粉色小签——它是"现在"的标记，不是内容。ink 字压粉底 4.22:1 过不了，
+   所以这里是粉底 + **白**字也不成，改用粉边白底 ink 字（12.29:1）。 */
+.lm-live {
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--white);
+  border: 2px solid var(--pink);
+  border-radius: 999px;
+}
+
+/* 一轮问答。问在右、答在左——对话的读法，不是聊天记录的时间线堆叠。
+   没有气泡：这套产品的质感来自纸和厚边，不来自即时通讯软件。 */
+.lm-turn {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-md);
+}
+
+.lm-turn-ask,
+.lm-turn-answer {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.lm-turn-ask + .lm-turn-answer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px dashed var(--sky-2);
+}
+
+/* "你问 / 读者答" 两个小签。 ink-soft 压白底 6.35:1 */
+.lm-turn-who {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 0 7px;
+  font-family: var(--font-round);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--sky);
+  border-radius: 999px;
+}
+
+/* 等回答。不画转圈——和 WaitNote 同一个路子：把正在发生的事说出来 */
+.lm-turn-waiting {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 2px dashed var(--ink);
+  border-radius: var(--r-sm);
+}
+
+.lm-turn-error {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+/* 追问入口。贴在模态底部，和翻页条并列——它比翻页重要：
+   翻页是"看别的信"，这是"接着聊" */
+.lm-ask {
+  display: flex;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.lm-ask-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+}
+
+.lm-ask-input::placeholder {
+  color: var(--ink-soft);
+}
+
+/* ink 底白字 12.29:1——和另外三屏的主动作同一个样子（决策 74） */
+.lm-ask-btn {
+  flex: none;
+  padding: 10px 20px;
+  font-family: var(--font-round);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--ink);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: var(--lift-sm);
+  cursor: pointer;
+}
+
+.lm-ask-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.lm-ask-btn:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+/* 锁了的信。这句话要说出来——否则孩子会以为是自己哪里做错了才问不了 */
+.lm-sealed {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  background: var(--sky);
+  border: 2px dashed var(--ink);
+  border-radius: var(--r-sm);
+}

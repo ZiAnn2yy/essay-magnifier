@@ -7,6 +7,7 @@ import { errorResponse } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import analyzeRouter from './routes/analyze.js';
 import readerRouter from './routes/reader.js';
+import followUpRouter from './routes/follow-up.js';
 import accessRouter from './routes/access.js';
 import trackRouter from './routes/track.js';
 import { countPrecomputed } from './agent/precomputed.js';
@@ -52,6 +53,9 @@ export function createApp() {
 
   app.use('/api/v3/analyze', analyzeRouter);
   app.use('/api/v3/reader', readerRouter);
+  // 追问：孩子读完回信接着问，读者当场答。和 reader 分开一条路由——
+  // 契约不一样（要带原句和原回信当上下文），混在一起两边都要判可选字段
+  app.use('/api/v3/follow-up', followUpRouter);
   // 埋点挂在 /api/v3 下：路由内部再用 '/track' 和 '/stats' 分流。
   // 挂在 /api/v3/track 上的话，'/stats' 会变成 /api/v3/track/stats。
   app.use('/api/v3', trackRouter);

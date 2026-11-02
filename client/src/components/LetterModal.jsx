@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './LetterModal.css';
+import { askFollowUp } from '../api.js';
 
 /**
  * 回信放大镜。
@@ -30,6 +31,17 @@ import './LetterModal.css';
  * 项目里 Esc / focus trap / 焦点还原**零先例**（册子面板 `.an-book-panel`
  * 是个无遮罩贴角抽屉，没有这些），所以这里自己写：Esc 关闭、Tab 在对话框内循环、
  * 打开时焦点移进去、关闭后焦点还给来源元素。
+ *
+ * ## 追问：关上就锁（2026-11-02 加，用户要的）
+ *
+ * 信还**活着**的时候，孩子能接着问，读者当场答，问答都记在这封信里。
+ * **关上那一刻它就锁了**——之后从顶栏或 dock 再打开只能读，不能再问。
+ *
+ * 为什么：用户要的是「引起兴趣」加「让孩子们把握当下」。回信来了那一刻
+ * 是孩子最想说话的瞬间，那个瞬间过去了就不再补票。否则「回头再聊」
+ * 等于永远不聊，而追问本来是这套产品里最能撬动写作的那一下——
+ * 他为了接着问，得先想清楚自己想问什么。
+ * 锁只是不再增长，问过答过的都还在，随时能翻回去看。
  */
 
 /** 焦点陷阱：Tab 在这个对话框内循环，不跑到背后的页面上。 */
@@ -61,12 +73,29 @@ function useFocusTrap(active, containerRef) {
   }, [active, containerRef]);
 }
 
-export default function LetterModal({ letters, index, open, onIndexChange, onClose, sourceRef }) {
+export default function LetterModal({
+  letters,
+  index,
+  open,
+  onIndexChange,
+  onClose,
+  sourceRef,
+  onFollowUp,
+  onSeal,
+}) {
   const cardRef = useRef(null);
   const dialogRef = useRef(null);
   const [closing, setClosing] = useState(false);
+  // 追问的那一句。切信时清空——上一封没问完的话不该跟到下一封去
+  const [question, setQuestion] = useState('');
+  const [sending, setSending] = useState(false);
+  const [askError, setAskError] = useState('');
   const current = letters[index] ?? null;
   const total = letters.length;
+  // 旧数据没有 live 字段。按锁着读——宁可少一个功能，不要给出一个
+  // 关不掉的追问入口
+  const live = current?.live === true;
+  const turns = Array.isArray(current?.followUps) ? current.followUps : [];
 
   // 进场：从来源元素的位置放大到屏幕中央（FLIP——先量起点终点，
   // 把元素定位到起点，下一帧再移到终点，中间交给 transition）。
@@ -112,6 +141,13 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
     };
   }, [open]);
 
+  // 换一封就把没问完的那句清掉。上一封没发送的话不该跟到下一封去——
+  // 孩子会以为那句是问新一封的
+  useEffect(() => {
+    setQuestion('');
+    setAskError('');
+  }, [current?.id]);
+
   useFocusTrap(open, dialogRef);
 
   // Esc 关闭，左右方向键翻页
@@ -135,8 +171,12 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
   /**
    * 出场：反向缩回来源位置，动画结束再真的关掉。
    * 只做进场不做出场会显得"被吞掉"——用户明确要求"放回到这个位置"。
+   *
+   * **关上就锁**：这一刻调用 onSeal，这封信从此只能读。见文件头那节。
    */
   function requestClose() {
+    // 先锁再走动画。锁是状态更新，动画是 DOM 操作，两件事互不依赖
+    if (current && live) onSeal?.(current.id);
     const card = cardRef.current;
     const from = sourceRef?.current?.getBoundingClientRect();
     if (!card || !from || from.width === 0 || closing) {
@@ -156,6 +196,36 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
 
   if (!open || !current) return null;
 
+  /**
+   * 问一句，读者当场答。
+   *
+   * 即刻回信：答案就地回到这一封里，不长等、不另起一封信。
+   * 输入框在等的时候不禁用文字、只禁用提交——孩子可以接着想下一句，
+   * 但那一句要等这一轮答完才发得出去（sending 闸门在 handleAsk 里）。
+   */
+  async function handleAsk() {
+    const ask = question.trim();
+    if (ask.length === 0 || sending) return;
+    setSending(true);
+    setAskError('');
+    try {
+      const data = await askFollowUp({
+        moveName: current.moveName,
+        essayTitle: current.essayTitle,
+        mySentence: current.mySentence,
+        reply: current.reply,
+        question: ask,
+      });
+      // 由上层落盘。这里不直接碰 letterStore——信的数组归 Analyzer 管
+      onFollowUp?.(current.id, ask, data.answer);
+      setQuestion('');
+    } catch (submitted) {
+      setAskError(submitted.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="lm-backdrop" onMouseDown={(event) => {
       // 点遮罩关闭。用 mousedown 而不是 click：按下去那一刻就该有反应，
@@ -174,7 +244,12 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
         }}
       >
         <header className="lm-head">
-          <span className="lm-label">来自读者的回信</span>
+          <span className="lm-label">
+            来自读者的回信
+            {/* 这一句是给孩子看的提示：现在还能聊。锁了之后它消失，
+                换成下面那句"收起来了" */}
+            {live && turns.length === 0 && <em className="lm-live">他还在，能问一句</em>}
+          </span>
           {/* 右上角只有一个 ×。× 和 − 是同一个动作（收回原位），
               放两个按钮做同一件事只会让人猜哪个是真的 */}
           <button type="button" className="lm-close" onClick={requestClose} aria-label="收起回信">
@@ -196,7 +271,64 @@ export default function LetterModal({ letters, index, open, onIndexChange, onClo
               <p className="lm-mine-text">{current.mySentence}</p>
             </div>
           )}
+
+          {/* 追问的记录。问的和答的都留着——孩子翻回去看的是这段对话，
+              不只是当初那封信。没有这一条时整个区域不渲染 */}
+          {turns.map((turn, turnIndex) => (
+            <div className="lm-turn" key={`${turn.at}-${turnIndex}`}>
+              <p className="lm-turn-ask">
+                <span className="lm-turn-who">你问</span>
+                {turn.ask}
+              </p>
+              <p className="lm-turn-answer">
+                <span className="lm-turn-who">读者答</span>
+                {turn.answer}
+              </p>
+            </div>
+          ))}
+
+          {sending && (
+            <p className="lm-turn-waiting" role="status">
+              他正想怎么回你…
+            </p>
+          )}
+
+          {askError && !sending && (
+            <p className="lm-turn-error" role="alert">
+              {askError}
+            </p>
+          )}
         </div>
+
+        {/* 追问入口。只在信还活着的时候出现——关上就不再补票 */}
+        {live ? (
+          <form
+            className="lm-ask"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleAsk();
+            }}
+          >
+            <input
+              className="lm-ask-input"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="想问读者什么？"
+              maxLength={200}
+              disabled={sending}
+              aria-label="想问读者什么"
+            />
+            <button
+              type="submit"
+              className="lm-ask-btn"
+              disabled={sending || question.trim().length === 0}
+            >
+              {sending ? '在问了…' : '问'}
+            </button>
+          </form>
+        ) : (
+          <p className="lm-sealed">这封信收起来了，留着看，不能再回。</p>
+        )}
 
         {/* 翻页只在多封时出现。单封时这个区域整个不渲染——
             空白的导航条会让人以为还有别的东西没找到 */}
