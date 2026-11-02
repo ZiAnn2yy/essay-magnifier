@@ -235,3 +235,45 @@ export function addMove(entry) {
   write(next);
   return next;
 }
+
+/**
+ * 从册子里拿出一条。返回剩下的条目和它**原来的位置**。
+ *
+ * 为什么要带回位置：拿出来之后要能原样放回去。册子是按时间排的，
+ * 放回末尾会让孩子刚整理的顺序又乱掉，而"撤销"就该像没发生过。
+ *
+ * 位置是 -1 表示册子里本来就没有这一条——调用方据此不弹撤销条。
+ *
+ * @param {{essayId: string, moveId: string, from: string, mySentence?: string}} entry
+ * @returns {{entries: Array, index: number}}
+ */
+export function removeFromBook(entry) {
+  const entries = read();
+  const key = keyOf(entry);
+  const index = entries.findIndex((item) => keyOf(item) === key);
+  if (index < 0) return { entries, index: -1 };
+  const next = [...entries];
+  next.splice(index, 1);
+  write(next);
+  return { entries: next, index };
+}
+
+/**
+ * 把拿出去了的那一条放回原来的位置（撤销）。
+ *
+ * 已经在册子里的就不重复放——键对得上就当已经放回去了。
+ *
+ * @param {Object} entry removeFromBook 拿出去时存下来的那一条
+ * @param {number} index 它原来的位置
+ * @returns {Array} 放回去之后的册子
+ */
+export function restoreToBook(entry, index) {
+  const entries = read();
+  const key = keyOf(entry);
+  if (entries.some((item) => keyOf(item) === key)) return entries;
+  const next = [...entries];
+  const at = Number.isInteger(index) && index >= 0 && index <= next.length ? index : next.length;
+  next.splice(at, 0, entry);
+  write(next);
+  return next;
+}

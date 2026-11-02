@@ -10,6 +10,9 @@ import { loadEssaysByGrade } from '../data/essayStore.js';
 import {
   loadBook,
   addMove,
+  removeFromBook,
+  restoreToBook,
+  entryKey,
   countLearnedMoves,
   countOwnEssays,
   favouriteMove,
@@ -265,6 +268,26 @@ export default function Analyzer({ grade, onBack }) {
   }
 
   /**
+   * 从册子里拿出一条。返回它**原来的位置**——册子面板要拿这个位置
+   * 把"放回去"做回原样，放回末尾会让孩子刚整理的顺序又乱掉。
+   *
+   * 为什么敢不做二次确认：拿出来立刻有撤销条，6 秒内点"放回去"就原样还原。
+   * 对孩子来说，一个确认对话框比一条撤销更难懂，而且删错了要连点两下才能救回来。
+   *
+   * @returns {number} 原位；册子里本来就没有这一条时是 -1
+   */
+  function handleRemoveFromBook(entry) {
+    const result = removeFromBook(entry);
+    setBook(result.entries);
+    return result.index;
+  }
+
+  /** 撤销：放回原来的位置。 */
+  function handleRestoreToBook(entry, index) {
+    setBook(restoreToBook(entry, index));
+  }
+
+  /**
    * 这一句收过没有。
    *
    * 问的是**这一句**，不是"这一招在这一篇里写过没有"——同一招在同一篇里可以写
@@ -413,7 +436,14 @@ export default function Analyzer({ grade, onBack }) {
         )}
       </div>
 
-      {bookOpen && <MoveBook entries={book} onClose={() => setBookOpen(false)} />}
+      {bookOpen && (
+        <MoveBook
+          entries={book}
+          onClose={() => setBookOpen(false)}
+          onRemove={handleRemoveFromBook}
+          onRestore={handleRestoreToBook}
+        />
+      )}
 
       <LetterModal
         letters={letters}
@@ -550,8 +580,16 @@ function BasisNote({ basis, attempts, degraded, precomputed }) {
  *      东西的盒子。对写作产品来说，"能回头读自己写过的话"是最深的激励。
  *   2. **两个数分开**。原来标题写"N 招"，可册子里混着从范文学来的招和
  *      自己写上的句，把句子数叫"招"是错的。拆成两行，各自标清楚。
+ *
+ * ## 每条都能拿出来（2026-11-02 加，用户要的）
+ *
+ * 点错的招、用不上的招，得能弄出去——否则册子只会越来越杂，而它是给孩子
+ * 回头看自己的地方。做法是每条右边一个 ×，**拿出来立刻给撤销条**（6 秒）。
+ * 不做二次确认：对孩子来说一个确认对话框比一条撤销更难懂，而且删错了
+ * 要连点两下才能救回来。自己写的那一句也能拿——那是他们自己的东西，
+ * 但撤销条照样兜得住误触。
  */
-function MoveBook({ entries, onClose }) {
+function MoveBook({ entries, onClose, onRemove, onRestore }) {
   const learned = entries.filter((entry) => entry.from === 'essay');
   const written = entries.filter((entry) => entry.from === 'own');
   const spotted = entries.filter((entry) => entry.from === 'spotted');
@@ -561,6 +599,29 @@ function MoveBook({ entries, onClose }) {
   // 证据墙只收自己的句子；剩下的是收进册子的招（学来的 + 看出来的）
   const wall = ownSentencesByMove(entries);
   const moves = entries.filter((entry) => entry.from !== 'own');
+  // 只留最近一条可撤销。连拿几条还每条都能撤销，那个状态孩子记不住，
+  // 撤销条也会从"救命"变成又一处需要管理的东西
+  const [undo, setUndo] = useState(null);
+
+  // 6 秒后自己走。不永久留着：一条永不消失的撤销条会变成常驻噪点
+  useEffect(() => {
+    if (!undo) return undefined;
+    const timer = window.setTimeout(() => setUndo(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [undo]);
+
+  function handleRemove(entry) {
+    // 父组件落盘时把原位带回来——撤销要靠它放回原样
+    const removedAt = onRemove(entry);
+    if (removedAt < 0) return;
+    setUndo({ entry, index: removedAt, label: describeEntry(entry) });
+  }
+
+  function handleUndo() {
+    if (!undo) return;
+    onRestore(undo.entry, undo.index);
+    setUndo(null);
+  }
 
   return (
     <div className="an-book-panel" role="dialog" aria-label="我的招式册子">
@@ -622,6 +683,7 @@ function MoveBook({ entries, onClose }) {
                     {group.sentences.map((entry) => (
                       <li key={`${entry.essayId}-${entry.moveId}-${entry.at}`}>
                         {entry.mySentence}
+                        <TakeOut entry={entry} onRemove={handleRemove} />
                       </li>
                     ))}
                   </ul>
@@ -634,13 +696,58 @@ function MoveBook({ entries, onClose }) {
             <h4 className="an-wall-head">收进册子的招</h4>
             <ul className="an-book-list">
               {moves.map((entry) => (
-                <BookEntry key={`${entry.moveId}-${entry.from}-${entry.at}`} entry={entry} />
+                <li key={`${entry.moveId}-${entry.from}-${entry.at}`}>
+                  <BookEntry entry={entry} />
+                  <TakeOut entry={entry} onRemove={handleRemove} />
+                </li>
               ))}
             </ul>
           </section>
         </>
       )}
+
+      {/* 撤销条。贴在面板底部跟着滚——刚点完 × 的眼睛正在面板里，
+          不该为了找它再滚一遍。6 秒后自己走（见上面的 useEffect）。 */}
+      {undo && (
+        <p className="an-book-undo" role="status">
+          <span>已经把{undo.label}拿出册子了</span>
+          <button type="button" onClick={handleUndo}>
+            放回去
+          </button>
+        </p>
+      )}
     </div>
+  );
+}
+
+/** 撤销条上那一小句：说清楚刚刚拿出去了什么。 */
+function describeEntry(entry) {
+  if (entry.from === 'own') {
+    const sentence = String(entry.mySentence ?? '');
+    const short = sentence.length > 10 ? `${sentence.slice(0, 10)}…` : sentence;
+    return short ? `你写的「${short}」` : '你写的那一句';
+  }
+  return `「${entry.name}」`;
+}
+
+/**
+ * 拿出册子的那个 ×。
+ *
+ * 放在每条右边、常驻可见，不藏在"整理"模式后面——藏起来的逃生口
+ * 在孩子需要它的时候不在。样式刻意安静：小、灰、细边，
+ * 不能和条目本身或者"关上"抢。
+ */
+function TakeOut({ entry, onRemove }) {
+  return (
+    <button
+      type="button"
+      className="an-book-remove"
+      onClick={() => onRemove(entry)}
+      aria-label={`把${describeEntry(entry)}拿出册子`}
+      title="拿出册子"
+    >
+      ×
+    </button>
   );
 }
 

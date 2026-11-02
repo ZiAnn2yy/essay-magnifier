@@ -17,6 +17,10 @@
 import {
   entryKey,
   hasEntry,
+  addMove,
+  loadBook,
+  removeFromBook,
+  restoreToBook,
   countLearnedMoves,
   countOwnEssays,
   favouriteMove,
@@ -24,6 +28,26 @@ import {
   countGenres,
   ownSentencesByMove,
 } from '../src/lib/moveBook.js';
+
+/**
+ * moveBook 的读写走 `window.localStorage`，Node 里没有。
+ * 补一个内存的最小实现——只实现这个库真正用到的那三个方法。
+ * 有了它才能测"存进去 → 读回来"这条完整的往返，
+ * 而 2026-10-30 那个 bug 恰恰只在这一段露头（存的时候对、读的时候松）。
+ */
+const backing = new Map();
+globalThis.window = {
+  localStorage: {
+    getItem: (key) => (backing.has(key) ? backing.get(key) : null),
+    setItem: (key, value) => backing.set(key, String(value)),
+    removeItem: (key) => backing.delete(key),
+  },
+};
+
+/** 清空册子，让每条用例都从空开始。 */
+function resetBook() {
+  backing.clear();
+}
 
 let failed = 0;
 
@@ -308,6 +332,75 @@ check(
   ownSentencesByMove([{ from: 'own', essayId: 'a', moveId: 'm1', name: 'x', at: 1 }]).length,
   0,
 );
+
+// ---- 拿出来 / 放回去（2026-11-02 用户要的逃生口）----
+resetBook();
+addMove({ moveId: 'm1', name: '把声音写出来', essayId: 'g3-73483', from: 'essay' });
+addMove({ moveId: 'm2', name: '把快动作拆成小步骤写', essayId: 'g3-73483', from: 'essay' });
+addMove({
+  moveId: 'm1',
+  name: '把声音写出来',
+  essayId: 'g3-73483',
+  from: 'own',
+  mySentence: '弟弟一拼乐高，手指就动得飞快。',
+});
+addMove({
+  moveId: 'm1',
+  name: '把声音写出来',
+  essayId: 'g3-73483',
+  from: 'own',
+  mySentence: '那支笔转得像小风车。',
+});
+
+check('收进去的读得回来', loadBook().length, 4);
+
+const first = loadBook()[0];
+const taken = removeFromBook(first);
+check('拿出来之后册子里少一条', taken.entries.length, 3);
+check('拿出来之后落盘了（读回来也是 3 条）', loadBook().length, 3);
+check('带回原来的位置，撤销要靠它放回原样', taken.index, 0);
+check('拿出来的那条真的不在了', hasEntry(loadBook(), first), false);
+
+// 放回原位：顺序必须还原。放回末尾会让孩子刚整理的顺序又乱掉，
+// 而"撤销"就该像没发生过
+const restored = restoreToBook(first, taken.index);
+check('放回原位之后条数回来', restored.length, 4);
+check('放回原位之后顺序还原', restored[0], first);
+check('放回之后落盘了（读回来的还是那一条）', entryKey(loadBook()[0]), entryKey(first));
+
+// 同篇、同招、另一句——按句子区分，不能连坐
+const other = loadBook()[2];
+const takenOther = removeFromBook(other);
+check('同招另一句不受连坐', loadBook().length, 3);
+check('同招另一句拿出来带的是它自己的位置', takenOther.index, 2);
+restoreToBook(other, takenOther.index);
+
+// 册子里没有的那条：不动，也不该弹撤销
+check('拿一条不存在的，位置是 -1', removeFromBook({ moveId: 'zz', essayId: 'no', from: 'essay' }).index, -1);
+check('拿一条不存在的，册子没被动', loadBook().length, 4);
+
+// 重复放回不重复塞
+restoreToBook(first, taken.index);
+check('同一条放回两次不会变两条', loadBook().length, 4);
+
+// 拿走一条，支架撤除的两个数跟着变——它们是被册子推导出来的，没有第二套逻辑
+resetBook();
+addMove({ moveId: 'm1', name: 'a', essayId: 'e1', from: 'essay' });
+addMove({ moveId: 'm2', name: 'b', essayId: 'e1', from: 'essay' });
+addMove({ moveId: 'm1', name: 'a', essayId: 'e1', from: 'own', mySentence: '一句' });
+check('拿走前：学来的 2 招', countLearnedMoves(loadBook()), 2);
+check('拿走前：在 1 篇里写过', countOwnEssays(loadBook()), 1);
+removeFromBook(loadBook()[0]);
+check('拿走学来的招，学来的招数少一招', countLearnedMoves(loadBook()), 1);
+check('拿走学来的招，写过的篇数不变', countOwnEssays(loadBook()), 1);
+
+resetBook();
+addMove({ moveId: 'm1', name: 'a', essayId: 'e1', from: 'essay' });
+addMove({ moveId: 'm1', name: 'a', essayId: 'e1', from: 'own', mySentence: '一句' });
+addMove({ moveId: 'm1', name: 'a', essayId: 'e2', from: 'own', mySentence: '两句' });
+removeFromBook(loadBook()[1]);
+check('拿走自己写的那句，学来的招数不变', countLearnedMoves(loadBook()), 1);
+check('拿走自己写的那句，写过的篇数少一篇', countOwnEssays(loadBook()), 1);
 
 console.log(
   failed === 0

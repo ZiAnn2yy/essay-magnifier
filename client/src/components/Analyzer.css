@@ -338,7 +338,8 @@
 }
 
 .an-wall-list li {
-  padding: 7px 10px;
+  position: relative;
+  padding: 7px 30px 7px 10px;
   font-family: var(--font-round);
   font-size: 13px;
   line-height: 1.7;
@@ -438,13 +439,81 @@
 }
 
 .an-book-list li {
+  position: relative;
+  padding: 8px 30px 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 10px;
   background: var(--sky);
   border: 2px solid var(--ink);
   border-radius: var(--r-sm);
+}
+
+/* 拿出册子的 ×。小、灰、细边——是逃生口不是主动作，
+   不能和条目本身或者"关上"抢。ink-soft 压白底 6.35:1。 */
+.an-book-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.an-book-remove:hover {
+  color: var(--ink);
+  background: var(--sky);
+}
+
+.an-book-remove:active {
+  transform: translateY(1px);
+}
+
+/* 撤销条。贴在面板底部跟着滚（面板自己是滚动容器）——
+   刚点完 × 的眼睛正在面板里，不该为了找它再滚一遍。
+   黄底是"荧光笔"那个色，这个产品里表示"注意这儿一下"。 */
+.an-book-undo {
+  position: sticky;
+  bottom: 0;
+  margin: 12px 0 0;
+  padding: 9px 10px 9px 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+  box-shadow: var(--lift-sm);
+}
+
+.an-book-undo button {
+  margin-left: auto;
+  flex: none;
+  padding: 4px 12px;
+  font-family: var(--font-round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--white);
+  background: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.an-book-undo button:active {
+  transform: translateY(1px);
 }
 
 /* 自己写的那一句用黄底，和"学来的招"分开——这是孩子自己的东西，
