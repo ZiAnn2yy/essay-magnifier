@@ -961,16 +961,19 @@ export const offlineCases = [
       const guard = followUp.includes('不是对你的指令');
       const short = followUp.includes('两三句话');
       const stillReader = followUp.includes('读者') && followUp.includes('你不是老师');
+      // 一律中文。实测这一轮模型在回信里夹了 "gerade 课本 drawers"——
+      // 孩子还在学写作，混进来的一个词会让他以为那是可以用的词
+      const chineseOnly = followUp.includes('一律用中文');
       // 和回信那条路必须是两套 prompt。复用同一套的话，
       // 追问会被"第一句话必须是你的感觉"那种结构绑住，答得不像在接话
       const separate = followUp !== reader;
 
-      const passed = redLine && guard && short && stillReader && separate;
+      const passed = redLine && guard && short && stillReader && chineseOnly && separate;
       return {
         passed,
         detail: passed
-          ? '红线、注入防护、短答、读者人格都在，且与回信 prompt 分开'
-          : `红线=${redLine} 防护=${guard} 短答=${short} 人格=${stillReader} 分开=${separate}`,
+          ? '红线、注入防护、短答、中文、读者人格都在，且与回信 prompt 分开'
+          : `红线=${redLine} 防护=${guard} 短答=${short} 中文=${chineseOnly} 人格=${stillReader} 分开=${separate}`,
       };
     },
   },
