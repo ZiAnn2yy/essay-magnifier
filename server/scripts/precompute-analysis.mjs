@@ -81,6 +81,31 @@ function loadExisting(grade) {
 }
 
 /**
+ * 一个变体条目合不合格。返回原因字符串，合格返回空。
+ *
+ * scaffolded 档多一条：**必须带 challenge。**
+ * 2026-11-02 巡检发现仓里有 4 篇的 scaffolded 变体 `challenge` 是 null——
+ * 支架撤了，可"让你自己找一句"的那个补偿没出现，正是决策 52 修掉的那个
+ * 断裂（撤除是单向的，孩子只看到东西变少了）。这种条目比没有更糟：
+ * 没有 scaffolded 至少会退回 base（不撤支架，诚实的中等结果），
+ * 有半个 scaffolded 就是撤了补偿却没到。
+ * 所以这里把它当不合格剔掉，重跑时补；补不上就一直退回 base。
+ *
+ * @param {string} variant 'base' | 'scaffolded'
+ * @param {Object} item 仓里的条目
+ * @param {string} essayText 范文原文
+ * @returns {string} 不合格的原因，合格时是空串
+ */
+function variantProblem(variant, item, essayText) {
+  const problem = isValidAnalysis(item.analysis, essayText);
+  if (problem) return problem;
+  if (variant === 'scaffolded' && !item.analysis?.challenge?.quote) {
+    return 'scaffolded 变体没有 challenge';
+  }
+  return '';
+}
+
+/**
  * 复核仓里已有的条目，剔掉不合格的。
  *
  * 为什么需要：2026-10-30 发现 6 篇存进去的段落文本**不是逐字原文**——
@@ -109,8 +134,7 @@ function pruneInvalid(store, essays) {
     for (const variant of ['base', 'scaffolded']) {
       const item = entry[variant];
       if (!item) continue;
-      const problem = isValidAnalysis(item.analysis, essay.text);
-      if (problem) {
+      if (variantProblem(variant, item, essay.text)) {
         delete entry[variant];
         dropped += 1;
       }

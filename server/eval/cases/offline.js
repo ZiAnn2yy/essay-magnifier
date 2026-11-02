@@ -41,7 +41,7 @@ import {
   GENRE_TOPICS,
   STAGES,
 } from '../../src/agent/standards.js';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -838,6 +838,47 @@ export const offlineCases = [
         restore();
         rmSync(dir, { recursive: true, force: true });
       }
+    },
+  },
+  {
+    /* ------------------------------------------------------------
+       锁住"撤了支架就必须给补偿"这条不变式，查的是**真实那份仓**。
+
+       2026-11-02 巡检发现仓里有 4 篇的 scaffolded 变体 challenge 是 null：
+       支架撤了（少标几招），可"让你自己找一句"的那个补偿没出现——
+       正是决策 52 修掉的那个断裂，孩子只看到东西变少了。
+       已在 precompute-analysis.mjs 的 pruneInvalid 里把它变成入库闸门
+       （scaffolded 不带 challenge 就当不合格剔掉、重跑补），
+       这里锁住它，免得哪天又被存进去而没人知道。
+
+       为什么查真仓而不是夹具：夹具只有一个篇目，这条要防的是
+       "79 篇里某几篇悄悄缺了"——那种事只有把真仓全数一遍才发现。
+       ------------------------------------------------------------ */
+    id: 'precompute-004',
+    requiresKey: false,
+    pass: '真实预处理仓里每个 scaffolded 变体都带 challenge——撤了支架就得给补偿',
+    run: async () => {
+      const dir = path.resolve('data/precomputed');
+      const files = readdirSync(dir).filter((name) => name.endsWith('.json'));
+      let scaffolded = 0;
+      const missing = [];
+
+      for (const file of files) {
+        const store = JSON.parse(readFileSync(path.join(dir, file), 'utf8'));
+        for (const [essayId, entry] of Object.entries(store)) {
+          if (!entry.scaffolded) continue;
+          scaffolded += 1;
+          if (!entry.scaffolded.analysis?.challenge?.quote) missing.push(essayId);
+        }
+      }
+
+      const passed = scaffolded > 0 && missing.length === 0;
+      return {
+        passed,
+        detail: passed
+          ? `${scaffolded} 个 scaffolded 变体全部带 challenge`
+          : `缺 challenge：${missing.join(', ')}（共 ${scaffolded} 个）`,
+      };
     },
   },
   {

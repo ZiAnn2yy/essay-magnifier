@@ -47,8 +47,11 @@ export default function App() {
     checkAccess()
       .then((result) => {
         setAccess(result);
-        // 进到开始屏才算一个会话真正开始。门槛都没过的连接不计入漏斗。
-        track('enter', {});
+        // 进到开始屏才算一个会话真正开始。**要密码时这里不记**——
+        // 门槛都没过的连接不计入漏斗，而服务端对没过门槛的会话一律 401，
+        // 在这儿发只会得到一条永远不落地的请求加一个控制台报错。
+        // 部署版是带密码的，所以那一条要等真的输对了再发（见下面 Gate 的 onUnlocked）。
+        if (!result.required) track('enter', {});
       })
       .catch(() => setAccess({ required: false, unlocked: false, unreachable: true }));
   }, []);
@@ -83,6 +86,8 @@ export default function App() {
         onUnlocked={async (code) => {
           await unlock(code);
           setAccess({ required: true, unlocked: true });
+          // 漏斗第一步落在这儿，不是 checkAccess 那儿——见 ask() 里的说明
+          track('enter', {});
         }}
       />
     );
